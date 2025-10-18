@@ -1,35 +1,90 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.InputSystem;
+﻿using UnityEngine;
 
-public class Player: MonoBehaviour
+[RequireComponent(typeof(Rigidbody))]
+public class Player : MonoBehaviour
 {
-    float speed = 2;
-    // Start is called before the first frame update
-    void Start()
-    {
+    public float walkSpeed = 2f;
+    public float sprintSpeed = 5f;
 
+    Rigidbody rb;
+    private bool isCharacterWalking;
+    public Animator animator;
+    Vector3 inputDir;
+    float currentSpeed;
+
+    void Awake()
+    {
+        rb = GetComponent<Rigidbody>();
+        rb.useGravity = true;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.constraints = RigidbodyConstraints.FreezeRotationX
+                       | RigidbodyConstraints.FreezeRotationY
+                       | RigidbodyConstraints.FreezeRotationZ;
     }
 
-    // Update is called once per frame
     void Update()
     {
-        if (Keyboard.current.wKey.isPressed)
+        currentSpeed = Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed;
+
+        inputDir = Vector3.zero;
+        if (Input.GetKey(KeyCode.W))
         {
-            transform.position = transform.position + Vector3.forward * speed * Time.deltaTime;
+            inputDir += transform.forward;
+            //TriggerWalkAnimation();
         }
-        if (Keyboard.current.sKey.isPressed)
+        if (Input.GetKey(KeyCode.S))
         {
-            transform.position = transform.position + Vector3.back * speed * Time.deltaTime;
+            inputDir -= transform.forward;
+            //TriggerWalkAnimation();
         }
-        if (Keyboard.current.aKey.isPressed)
+        if (Input.GetKey(KeyCode.A))
         {
-            transform.position = transform.position + Vector3.left * speed * Time.deltaTime;
+            inputDir -= transform.right;
+            //TriggerWalkAnimation();
         }
-        if (Keyboard.current.dKey.isPressed)
+        if (Input.GetKey(KeyCode.D)) 
+        { inputDir += transform.right;
+           // TriggerWalkAnimation();
+        }
+        // if (!Input.GetKey(KeyCode.W) && !Input.GetKey(KeyCode.S) && !Input.GetKey(KeyCode.A)&&!Input.GetKey(KeyCode.D)) 
+        //{
+        //  TriggerIdleAnimation();
+        //}
+        if (inputDir.magnitude < .1f) {TriggerIdleAnimation();}
+        else {TriggerWalkAnimation();}
+        inputDir = inputDir.normalized;
+    }
+
+    void FixedUpdate()
+    {
+        // Y bileşenini koru (yerçekimi için)
+        Vector3 v = rb.velocity;
+
+        // Hedef yatay hız
+        Vector3 targetXZ = inputDir * currentSpeed;
+
+        // Anlık hızda XZ’yi hedefe ayarla, Y’yi dokunma
+        v.x = targetXZ.x;
+        v.z = targetXZ.z;
+        rb.velocity = v;
+
+        
+    }
+     void TriggerWalkAnimation() 
+    {
+        if(!isCharacterWalking)
         {
-            transform.position = transform.position + Vector3.right * speed * Time.deltaTime;
+            animator.SetTrigger("Walk");
+            isCharacterWalking = true;
+        }
+    }
+    void TriggerIdleAnimation() 
+    {
+        if (isCharacterWalking) 
+        {
+            animator.SetTrigger("Idle");
+            isCharacterWalking = false;
         }
     }
 }
