@@ -8,9 +8,16 @@ public class Player : MonoBehaviour
 
     Rigidbody rb;
     private bool isCharacterWalking;
+    private bool isCharacterRunning;
     public Animator animator;
     Vector3 inputDir;
     float currentSpeed;
+
+    // ADD
+    [Header("Visual")]
+    public Transform model;          // cowboy child'ını buraya sürükle
+    public float modelRotateLerp = 12f; // dönüş yumuşatma hızı
+
 
     void Awake()
     {
@@ -43,16 +50,34 @@ public class Player : MonoBehaviour
             inputDir -= transform.right;
             //TriggerWalkAnimation();
         }
-        if (Input.GetKey(KeyCode.D)) 
-        { inputDir += transform.right;
-           // TriggerWalkAnimation();
+        if (Input.GetKey(KeyCode.D))
+        {
+            inputDir += transform.right;
+            // TriggerWalkAnimation();
         }
         // if (!Input.GetKey(KeyCode.W) && !Input.GetKey(KeyCode.S) && !Input.GetKey(KeyCode.A)&&!Input.GetKey(KeyCode.D)) 
         //{
         //  TriggerIdleAnimation();
         //}
-        if (inputDir.magnitude < .1f) {TriggerIdleAnimation();}
-        else {TriggerWalkAnimation();}
+        bool moving = inputDir.magnitude >= 0.1f;
+        bool sprint = moving && Input.GetKey(KeyCode.LeftShift);
+
+        if (!moving)
+        {
+            TriggerIdleAnimation();
+            isCharacterWalking = false;
+            isCharacterRunning = false;
+        }
+        else if (sprint)
+        {
+            TriggerRunAnimation();        // YENİ
+        }
+        else
+        {
+            isCharacterRunning = false;   // yürüyüşe geçince koşu flag’i kapansın
+            TriggerWalkAnimation();
+        }
+
         inputDir = inputDir.normalized;
     }
 
@@ -69,22 +94,44 @@ public class Player : MonoBehaviour
         v.z = targetXZ.z;
         rb.velocity = v;
 
-        
+        // ADD: Görsel modeli hareket yönüne döndür (parent dönmez)
+        if (model != null && inputDir.sqrMagnitude > 0.0001f)
+        {
+            Quaternion targetRot = Quaternion.LookRotation(inputDir, Vector3.up);
+            model.rotation = Quaternion.Slerp(model.rotation, targetRot, modelRotateLerp * Time.fixedDeltaTime);
+        }
+        // input yoksa mevcut yönünü korur (idle'da sabit)
+
+
+
     }
-     void TriggerWalkAnimation() 
+    void TriggerWalkAnimation()
     {
-        if(!isCharacterWalking)
+        if (!isCharacterWalking)
         {
             animator.SetTrigger("Walk");
             isCharacterWalking = true;
         }
     }
-    void TriggerIdleAnimation() 
+    void TriggerIdleAnimation()
     {
-        if (isCharacterWalking) 
+        if (isCharacterWalking || isCharacterRunning)
         {
+            animator.ResetTrigger("Walk"); // öneri (çakışmayı engeller)
+            animator.ResetTrigger("Run");  // öneri (koşu tetikliyse iptal et)
             animator.SetTrigger("Idle");
             isCharacterWalking = false;
+            isCharacterRunning = false;
+        }
+    }
+    void TriggerRunAnimation()
+    {
+        if (!isCharacterRunning)
+        {
+            animator.SetTrigger("Run");
+            isCharacterRunning = true;
+            isCharacterWalking = false; // koşuya geçince yürüyüş flag’i kapansın
         }
     }
 }
+
