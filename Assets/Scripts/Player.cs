@@ -129,7 +129,7 @@ public class Player : MonoBehaviour
     void FixedUpdate()
     {
         // Y bileşenini koru (yerçekimi için)
-        Vector3 v = rb.linearVelocity;
+        Vector3 v = rb.velocity;
 
         // Hedef yatay hız
         Vector3 targetXZ = inputDir * currentSpeed;
@@ -137,7 +137,7 @@ public class Player : MonoBehaviour
         // Anlık hızda XZ’yi hedefe ayarla, Y’yi dokunma
         v.x = targetXZ.x;
         v.z = targetXZ.z;
-        rb.linearVelocity = v;
+        rb.velocity = v;
 
         // Görsel modeli hareket yönüne döndür (parent dönmez)
         if (model != null && inputDir.sqrMagnitude > 0.0001f)
