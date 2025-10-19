@@ -10045,7 +10045,7 @@ GameObject:
   - component: {fileID: 2018271275}
   - component: {fileID: 2018271273}
   - component: {fileID: 2018271282}
-  - component: {fileID: 2018271284}
+  - component: {fileID: 2018271283}
   m_Layer: 0
   m_Name: Camera
   m_TagString: MainCamera
@@ -10129,7 +10129,7 @@ Transform:
   m_GameObject: {fileID: 2018271272}
   serializedVersion: 2
   m_LocalRotation: {x: -0.15777141, y: -0.18749908, z: 0.03060225, w: -0.9690283}
-  m_LocalPosition: {x: 18.629404, y: 4.2961826, z: 88.371635}
+  m_LocalPosition: {x: 18.488628, y: 4.4224386, z: 88.021454}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10274,7 +10274,7 @@ MonoBehaviour:
       enableFptlForForwardOpaque: 0
       enableBigTilePrepass: 0
       isFptlEnabled: 0
---- !u!114 &2018271284
+--- !u!114 &2018271283
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -10283,37 +10283,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 2018271272}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5c0f8f1e2677f5249925de8b4488d1b4, type: 3}
+  m_Script: {fileID: 11500000, guid: 926932b7af81abf498b21936bfeefeab, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TPSCameraOrbit
+  m_EditorClassIdentifier: Assembly-CSharp::CameraFollow
   target: {fileID: 1991641314}
-  model: {fileID: 470464688}
-  pivotOffset: {x: 0, y: 1.6, z: 0}
-  distance: 1
-  minDistance: 0.5
-  maxDistance: 2
-  sideOffset: 0
-  shoulderSwapKey: 118
-  sensX: 50
-  sensY: 40
-  deadzone: 0.03
-  minPitch: -55
-  maxPitch: 65
-  invertY: 0
-  rotateLerp: 12
-  distanceLerp: 10
-  sideLerp: 0
-  centerWhenAiming: 1
-  alignPlayerOnAim: 1
-  aimKey: 324
-  recenterOnMove: 1
-  recenterDelay: 0.35
-  recenterSpeed: 120
-  collisionMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  collisionRadius: 0.2
-  collisionBuffer: 0.1
+  autoOffset: 1
+  offset: {x: 0, y: 2, z: -3}
+  followLerp: 10
+  lockRotation: 1
+  lookAtTarget: 0
 --- !u!1 &2020608216 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1218347679047942, guid: fa6105287f77b1240a0017f7d23434c2, type: 3}

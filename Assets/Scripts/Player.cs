@@ -9,15 +9,18 @@ public class Player : MonoBehaviour
     Rigidbody rb;
     private bool isCharacterWalking;
     private bool isCharacterRunning;
+    private bool isCharacterCrouched;
     public Animator animator;
     Vector3 inputDir;
     float currentSpeed;
 
     // ADD
     [Header("Visual")]
-    public Transform model;          // cowboy child'ını buraya sürükle
-    public float modelRotateLerp = 12f; // dönüş yumuşatma hızı
+    public Transform model;              // cowboy child'ını buraya sürükle
+    public float modelRotateLerp = 12f;  // dönüş yumuşatma hızı
 
+    // NEW: crouch hızı
+    public float crouchSpeed = 1.5f;
 
     void Awake()
     {
@@ -34,48 +37,80 @@ public class Player : MonoBehaviour
     {
         currentSpeed = Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed;
 
+        // --- Input Topla ---
         inputDir = Vector3.zero;
-        if (Input.GetKey(KeyCode.W))
+        if (Input.GetKey(KeyCode.W)) inputDir += transform.forward;
+        if (Input.GetKey(KeyCode.S)) inputDir -= transform.forward;
+        if (Input.GetKey(KeyCode.A)) inputDir -= transform.right;
+        if (Input.GetKey(KeyCode.D)) inputDir += transform.right;
+
+        // --- Crouch Toggle (C) ---
+        if (Input.GetKeyDown(KeyCode.C))
         {
-            inputDir += transform.forward;
-            //TriggerWalkAnimation();
+            if (!isCharacterCrouched)
+            {
+                isCharacterCrouched = true;
+                animator.ResetTrigger("Idle");
+                animator.ResetTrigger("Walk");
+                animator.ResetTrigger("Run");
+                animator.SetTrigger("CrouchIdle");
+                isCharacterWalking = false;
+                isCharacterRunning = false;
+            }
+            else
+            {
+                isCharacterCrouched = false;
+                animator.ResetTrigger("CrouchIdle");
+                animator.ResetTrigger("CrouchWalk");
+                animator.SetTrigger("Idle");
+                isCharacterWalking = false;
+                isCharacterRunning = false;
+            }
         }
-        if (Input.GetKey(KeyCode.S))
-        {
-            inputDir -= transform.forward;
-            //TriggerWalkAnimation();
-        }
-        if (Input.GetKey(KeyCode.A))
-        {
-            inputDir -= transform.right;
-            //TriggerWalkAnimation();
-        }
-        if (Input.GetKey(KeyCode.D))
-        {
-            inputDir += transform.right;
-            // TriggerWalkAnimation();
-        }
-        // if (!Input.GetKey(KeyCode.W) && !Input.GetKey(KeyCode.S) && !Input.GetKey(KeyCode.A)&&!Input.GetKey(KeyCode.D)) 
-        //{
-        //  TriggerIdleAnimation();
-        //}
+
+        // Crouch'ta hız kısıtı
+        if (isCharacterCrouched)
+            currentSpeed = Mathf.Min(currentSpeed, crouchSpeed);
+
+        // --- Animasyon Kararı ---
         bool moving = inputDir.magnitude >= 0.1f;
         bool sprint = moving && Input.GetKey(KeyCode.LeftShift);
 
-        if (!moving)
+        if (isCharacterCrouched)
         {
-            TriggerIdleAnimation();
-            isCharacterWalking = false;
-            isCharacterRunning = false;
-        }
-        else if (sprint)
-        {
-            TriggerRunAnimation();        // YENİ
+            // Crouch modunda SADECE crouch animleri
+            if (!moving)
+            {
+                TriggerCrouchIdleAnimation();
+                isCharacterWalking = false;
+                isCharacterRunning = false;
+            }
+            else
+            {
+                TriggerCrouchWalkAnimation();
+                isCharacterWalking = true;   // yürüyorsun ama crouch-walk
+                isCharacterRunning = false;
+            }
         }
         else
         {
-            isCharacterRunning = false;   // yürüyüşe geçince koşu flag’i kapansın
-            TriggerWalkAnimation();
+            // Normal mod (Idle/Walk/Run)
+            if (!moving)
+            {
+                TriggerIdleAnimation();          // önce tetikle
+                isCharacterWalking = false;      // sonra flagleri temizle
+                isCharacterRunning = false;
+                // DİKKAT: burada isCharacterCrouched = false YAZMIYORUZ!
+            }
+            else if (sprint)
+            {
+                TriggerRunAnimation();
+            }
+            else
+            {
+                isCharacterRunning = false;
+                TriggerWalkAnimation();
+            }
         }
 
         inputDir = inputDir.normalized;
@@ -101,10 +136,8 @@ public class Player : MonoBehaviour
             model.rotation = Quaternion.Slerp(model.rotation, targetRot, modelRotateLerp * Time.fixedDeltaTime);
         }
         // input yoksa mevcut yönünü korur (idle'da sabit)
-
-
-
     }
+
     void TriggerWalkAnimation()
     {
         if (!isCharacterWalking)
@@ -113,17 +146,20 @@ public class Player : MonoBehaviour
             isCharacterWalking = true;
         }
     }
+
     void TriggerIdleAnimation()
     {
         if (isCharacterWalking || isCharacterRunning)
         {
-            animator.ResetTrigger("Walk"); // öneri (çakışmayı engeller)
-            animator.ResetTrigger("Run");  // öneri (koşu tetikliyse iptal et)
+            animator.ResetTrigger("Walk"); // çakışmayı engeller
+            animator.ResetTrigger("Run");
+            animator.ResetTrigger("Squat");
             animator.SetTrigger("Idle");
             isCharacterWalking = false;
             isCharacterRunning = false;
         }
     }
+
     void TriggerRunAnimation()
     {
         if (!isCharacterRunning)
@@ -133,5 +169,14 @@ public class Player : MonoBehaviour
             isCharacterWalking = false; // koşuya geçince yürüyüş flag’i kapansın
         }
     }
-}
 
+    void TriggerCrouchIdleAnimation()
+    {
+        animator.SetTrigger("CrouchIdle");
+    }
+
+    void TriggerCrouchWalkAnimation()
+    {
+        animator.SetTrigger("CrouchWalk");
+    }
+}
