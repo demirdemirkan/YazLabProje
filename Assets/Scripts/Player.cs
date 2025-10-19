@@ -14,13 +14,12 @@ public class Player : MonoBehaviour
     Vector3 inputDir;
     float currentSpeed;
 
-    // ADD
     [Header("Visual")]
     public Transform model;              // cowboy child'ını buraya sürükle
     public float modelRotateLerp = 12f;  // dönüş yumuşatma hızı
 
-    // NEW: crouch hızı
-    public float crouchSpeed = 1.5f;
+    [Header("Crouch")]
+    public float crouchSpeed = 1.5f;     // eğilirken maksimum hız
 
     void Awake()
     {
@@ -37,12 +36,23 @@ public class Player : MonoBehaviour
     {
         currentSpeed = Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed;
 
-        // --- Input Topla ---
+        // --- Input Topla (KAMERA REFERANSLI) ---
         inputDir = Vector3.zero;
-        if (Input.GetKey(KeyCode.W)) inputDir += transform.forward;
-        if (Input.GetKey(KeyCode.S)) inputDir -= transform.forward;
-        if (Input.GetKey(KeyCode.A)) inputDir -= transform.right;
-        if (Input.GetKey(KeyCode.D)) inputDir += transform.right;
+
+        Transform cam = Camera.main ? Camera.main.transform : null;
+        // Kameranın forward/right'ını XZ düzlemine projeliyoruz (y=yok)
+        Vector3 camF = transform.forward; // fallback
+        Vector3 camR = transform.right;
+        if (cam != null)
+        {
+            camF = cam.forward; camF.y = 0f; camF.Normalize();
+            camR = cam.right; camR.y = 0f; camR.Normalize();
+        }
+
+        if (Input.GetKey(KeyCode.W)) inputDir += camF;
+        if (Input.GetKey(KeyCode.S)) inputDir -= camF;
+        if (Input.GetKey(KeyCode.A)) inputDir -= camR;
+        if (Input.GetKey(KeyCode.D)) inputDir += camR;
 
         // --- Crouch Toggle (C) ---
         if (Input.GetKeyDown(KeyCode.C))
@@ -62,13 +72,13 @@ public class Player : MonoBehaviour
                 isCharacterCrouched = false;
                 animator.ResetTrigger("CrouchIdle");
                 animator.ResetTrigger("CrouchWalk");
-                animator.SetTrigger("Idle");
+                animator.SetTrigger("Idle"); // Stand klibin varsa "Stand" kullanabilirsin
                 isCharacterWalking = false;
                 isCharacterRunning = false;
             }
         }
 
-        // Crouch'ta hız kısıtı
+        // Crouch'ta hız limiti
         if (isCharacterCrouched)
             currentSpeed = Mathf.Min(currentSpeed, crouchSpeed);
 
@@ -88,7 +98,7 @@ public class Player : MonoBehaviour
             else
             {
                 TriggerCrouchWalkAnimation();
-                isCharacterWalking = true;   // yürüyorsun ama crouch-walk
+                isCharacterWalking = true;   // crouch-walk
                 isCharacterRunning = false;
             }
         }
@@ -100,7 +110,6 @@ public class Player : MonoBehaviour
                 TriggerIdleAnimation();          // önce tetikle
                 isCharacterWalking = false;      // sonra flagleri temizle
                 isCharacterRunning = false;
-                // DİKKAT: burada isCharacterCrouched = false YAZMIYORUZ!
             }
             else if (sprint)
             {
@@ -110,6 +119,7 @@ public class Player : MonoBehaviour
             {
                 isCharacterRunning = false;
                 TriggerWalkAnimation();
+                isCharacterWalking = true;
             }
         }
 
@@ -129,7 +139,7 @@ public class Player : MonoBehaviour
         v.z = targetXZ.z;
         rb.velocity = v;
 
-        // ADD: Görsel modeli hareket yönüne döndür (parent dönmez)
+        // Görsel modeli hareket yönüne döndür (parent dönmez)
         if (model != null && inputDir.sqrMagnitude > 0.0001f)
         {
             Quaternion targetRot = Quaternion.LookRotation(inputDir, Vector3.up);
@@ -151,7 +161,7 @@ public class Player : MonoBehaviour
     {
         if (isCharacterWalking || isCharacterRunning)
         {
-            animator.ResetTrigger("Walk"); // çakışmayı engeller
+            animator.ResetTrigger("Walk");
             animator.ResetTrigger("Run");
             animator.ResetTrigger("Squat");
             animator.SetTrigger("Idle");
