@@ -15,11 +15,20 @@ public class Player : MonoBehaviour
     float currentSpeed;
 
     [Header("Visual")]
-    public Transform model;              // cowboy child'ını buraya sürükle
-    public float modelRotateLerp = 12f;  // dönüş yumuşatma hızı
+    public Transform model;              // cowboy child'ı
+    public float modelRotateLerp = 12f;  // dönüş yumuşatma
 
     [Header("Crouch")]
-    public float crouchSpeed = 1.5f;     // eğilirken maksimum hız
+    public float crouchSpeed = 1.5f;     // eğilirken hız
+
+    [Header("Aim")]
+    public bool isAiming;                 // AimController set eder (toggle RMB)
+    public string aimBoolParam = "Aiming";// Animator bool param adı (opsiyonel)
+
+    // Pistol/Aim state takibi (trigger spam önlemek için)
+    private bool isPistolActive;
+    private bool isPistolWalking;
+    private bool isPistolCrouched;
 
     void Awake()
     {
@@ -36,11 +45,10 @@ public class Player : MonoBehaviour
     {
         currentSpeed = Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed;
 
-        // --- Input Topla (KAMERA REFERANSLI) ---
+        // --- Input (KAMERA REFERANSLI) ---
         inputDir = Vector3.zero;
 
         Transform cam = Camera.main ? Camera.main.transform : null;
-        // Kameranın forward/right'ını XZ düzlemine projeliyoruz (y=yok)
         Vector3 camF = transform.forward; // fallback
         Vector3 camR = transform.right;
         if (cam != null)
@@ -72,13 +80,13 @@ public class Player : MonoBehaviour
                 isCharacterCrouched = false;
                 animator.ResetTrigger("CrouchIdle");
                 animator.ResetTrigger("CrouchWalk");
-                animator.SetTrigger("Idle"); // Stand klibin varsa "Stand" kullanabilirsin
+                animator.SetTrigger("Idle");
                 isCharacterWalking = false;
                 isCharacterRunning = false;
             }
         }
 
-        // Crouch'ta hız limiti
+        // Crouch hız limiti
         if (isCharacterCrouched)
             currentSpeed = Mathf.Min(currentSpeed, crouchSpeed);
 
@@ -86,40 +94,82 @@ public class Player : MonoBehaviour
         bool moving = inputDir.magnitude >= 0.1f;
         bool sprint = moving && Input.GetKey(KeyCode.LeftShift);
 
-        if (isCharacterCrouched)
+        // NİŞAN ÖNCELİKLİ
+        if (isAiming)
         {
-            // Crouch modunda SADECE crouch animleri
-            if (!moving)
+            if (animator) animator.SetBool(aimBoolParam, true);
+
+            if (isCharacterCrouched)
             {
-                TriggerCrouchIdleAnimation();
+                // Nişan + eğilmişken HER ZAMAN crouch idle (yürüse bile üst gövde idle)
+                TriggerPistolCrouchIdleAnimation();
                 isCharacterWalking = false;
                 isCharacterRunning = false;
             }
             else
             {
-                TriggerCrouchWalkAnimation();
-                isCharacterWalking = true;   // crouch-walk
-                isCharacterRunning = false;
+                // Nişan + ayakta: duruyorsa idle, hareket varsa walk
+                if (!moving)
+                {
+                    TriggerPistolIdleAnimation();
+                    isCharacterWalking = false;
+                    isCharacterRunning = false;
+                }
+                else
+                {
+                    TriggerPistolWalkAnimation();
+                    isCharacterWalking = true;   // pistol-walk
+                    isCharacterRunning = false;
+                }
             }
         }
         else
         {
-            // Normal mod (Idle/Walk/Run)
-            if (!moving)
+            // nişandan çıkarken tüm pistol state'lerini kapat
+            if (isPistolActive)
             {
-                TriggerIdleAnimation();          // önce tetikle
-                isCharacterWalking = false;      // sonra flagleri temizle
-                isCharacterRunning = false;
+                ResetPistolTriggers();
+                isPistolActive = false;
+                isPistolWalking = false;
+                isPistolCrouched = false;
             }
-            else if (sprint)
+
+            if (animator) animator.SetBool(aimBoolParam, false);
+
+            // Normal/Crouch akışı
+            if (isCharacterCrouched)
             {
-                TriggerRunAnimation();
+                if (!moving)
+                {
+                    TriggerCrouchIdleAnimation();
+                    isCharacterWalking = false;
+                    isCharacterRunning = false;
+                }
+                else
+                {
+                    TriggerCrouchWalkAnimation();
+                    isCharacterWalking = true;
+                    isCharacterRunning = false;
+                }
             }
             else
             {
-                isCharacterRunning = false;
-                TriggerWalkAnimation();
-                isCharacterWalking = true;
+                if (!moving)
+                {
+                    TriggerIdleAnimation();
+                    isCharacterWalking = false;
+                    isCharacterRunning = false;
+                }
+                else if (sprint)
+                {
+                    TriggerRunAnimation();
+                }
+                else
+                {
+                    isCharacterRunning = false;
+                    TriggerWalkAnimation();
+                    isCharacterWalking = true;
+                }
             }
         }
 
@@ -128,26 +178,43 @@ public class Player : MonoBehaviour
 
     void FixedUpdate()
     {
-        // Y bileşenini koru (yerçekimi için)
+        // Y bileşenini koru
         Vector3 v = rb.velocity;
 
         // Hedef yatay hız
         Vector3 targetXZ = inputDir * currentSpeed;
 
-        // Anlık hızda XZ’yi hedefe ayarla, Y’yi dokunma
+        // XZ hızını ayarla
         v.x = targetXZ.x;
         v.z = targetXZ.z;
         rb.velocity = v;
 
-        // Görsel modeli hareket yönüne döndür (parent dönmez)
-        if (model != null && inputDir.sqrMagnitude > 0.0001f)
+        // Model dönüşü: normalde hareket yönüne; aim'de kameraya
+        if (model != null)
         {
-            Quaternion targetRot = Quaternion.LookRotation(inputDir, Vector3.up);
-            model.rotation = Quaternion.Slerp(model.rotation, targetRot, modelRotateLerp * Time.fixedDeltaTime);
+            Vector3 faceDir = inputDir;
+
+            if (isAiming)
+            {
+                var camTr = Camera.main ? Camera.main.transform : null;
+                if (camTr)
+                {
+                    faceDir = camTr.forward;
+                    faceDir.y = 0f;
+                    if (faceDir.sqrMagnitude < 0.0001f) faceDir = transform.forward;
+                    faceDir.Normalize();
+                }
+            }
+
+            if (faceDir.sqrMagnitude > 0.0001f)
+            {
+                Quaternion targetRot = Quaternion.LookRotation(faceDir, Vector3.up);
+                model.rotation = Quaternion.Slerp(model.rotation, targetRot, modelRotateLerp * Time.fixedDeltaTime);
+            }
         }
-        // input yoksa mevcut yönünü korur (idle'da sabit)
     }
 
+    // -------- NORMAL STATE TRIGGER'LARI --------
     void TriggerWalkAnimation()
     {
         if (!isCharacterWalking)
@@ -159,15 +226,22 @@ public class Player : MonoBehaviour
 
     void TriggerIdleAnimation()
     {
-        if (isCharacterWalking || isCharacterRunning)
-        {
-            animator.ResetTrigger("Walk");
-            animator.ResetTrigger("Run");
-            animator.ResetTrigger("Squat");
-            animator.SetTrigger("Idle");
-            isCharacterWalking = false;
-            isCharacterRunning = false;
-        }
+        // her durumda Idle'a dön (pistol varyantlarını da kapat)
+        animator.ResetTrigger("Walk");
+        animator.ResetTrigger("Run");
+        animator.ResetTrigger("CrouchIdle");
+
+        animator.ResetTrigger("PistolIdle");
+        animator.ResetTrigger("PistolWalk");
+        animator.ResetTrigger("PistolCrouchIdle");
+
+        animator.SetTrigger("Idle");
+
+        isCharacterWalking = false;
+        isCharacterRunning = false;
+        isPistolActive = false;
+        isPistolWalking = false;
+        isPistolCrouched = false;
     }
 
     void TriggerRunAnimation()
@@ -176,7 +250,7 @@ public class Player : MonoBehaviour
         {
             animator.SetTrigger("Run");
             isCharacterRunning = true;
-            isCharacterWalking = false; // koşuya geçince yürüyüş flag’i kapansın
+            isCharacterWalking = false;
         }
     }
 
@@ -188,5 +262,55 @@ public class Player : MonoBehaviour
     void TriggerCrouchWalkAnimation()
     {
         animator.SetTrigger("CrouchWalk");
+    }
+
+    // -------- PISTOL (AIM) TRIGGER'LARI --------
+    void TriggerPistolIdleAnimation()
+    {
+        if (!isPistolActive || isPistolWalking || isPistolCrouched)
+        {
+            animator.ResetTrigger("PistolWalk");
+            animator.ResetTrigger("PistolCrouchIdle");
+            animator.SetTrigger("PistolIdle");
+
+            isPistolActive = true;
+            isPistolWalking = false;
+            isPistolCrouched = false;
+        }
+    }
+
+    void TriggerPistolWalkAnimation()
+    {
+        if (!isPistolActive || !isPistolWalking || isPistolCrouched)
+        {
+            animator.ResetTrigger("PistolIdle");
+            animator.ResetTrigger("PistolCrouchIdle");
+            animator.SetTrigger("PistolWalk");
+
+            isPistolActive = true;
+            isPistolWalking = true;
+            isPistolCrouched = false;
+        }
+    }
+
+    void TriggerPistolCrouchIdleAnimation()
+    {
+        if (!isPistolActive || isPistolWalking || !isPistolCrouched)
+        {
+            animator.ResetTrigger("PistolWalk");
+            animator.ResetTrigger("PistolIdle");
+            animator.SetTrigger("PistolCrouchIdle");
+
+            isPistolActive = true;
+            isPistolWalking = false;
+            isPistolCrouched = true;
+        }
+    }
+
+    void ResetPistolTriggers()
+    {
+        animator.ResetTrigger("PistolIdle");
+        animator.ResetTrigger("PistolWalk");
+        animator.ResetTrigger("PistolCrouchIdle");
     }
 }
