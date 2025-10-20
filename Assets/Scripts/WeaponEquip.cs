@@ -1,160 +1,225 @@
 ﻿using UnityEngine;
 
+[DisallowMultipleComponent]
 public class WeaponEquip : MonoBehaviour
 {
     [Header("References")]
-    public Transform rightHandMount;     // RightHand_Mount'u sürükle
-    public GameObject pistolPrefab;      // Pistol prefabını sürükle (içinde "Grip" varsa şahane)
+    [Tooltip("Sağ el için mount (RightHand_Mount). Boşsa Awake'te adından bulmayı dener.")]
+    public Transform rightHandMount;
+
+    [Tooltip("Pistol prefab (Grip boşluğu varsa hizalama yapılır).")]
+    public GameObject pistolPrefab;
 
     [Header("Options")]
-    public bool useGripAlignment = true;   // Pistol içinde "Grip" varsa otomatik hizala
-    public bool maintainWorldPose = false; // Parent ederken dünya pozunu koru (genelde false)
+    public bool useGripAlignment = true;
+    public bool maintainWorldPose = false;
+    public bool debugLogs = true;
 
-    [Header("Input")]
-    public KeyCode equipKey = KeyCode.Q;         // Q = TAK
-    public KeyCode unequipKey = KeyCode.Alpha1;  // 1 = BIRAK
+    [Header("Calibration Offsets")]
+    [Tooltip("Mount'a göre elle düzelteceğin pozisyon ofseti (local).")]
+    public Vector3 positionOffset = Vector3.zero;
+    [Tooltip("Mount'a göre elle düzelteceğin rotasyon (Euler, local).")]
+    public Vector3 rotationOffsetEuler = Vector3.zero;
 
-    GameObject currentPistol;
+    [Header("Rotation Lock")]
+    [Tooltip("true ise silah, mount tarafından her frame döndürülse bile local dönüşünü zorla sabitler.")]
+    public bool maintainLocalRotationEveryFrame = false;
 
-    void Update()
+    [Header("Input (Legacy Input)")]
+    public KeyCode toggleKey = KeyCode.Q;         // Q: tak/çıkar
+    public KeyCode altToggleKey = KeyCode.Alpha1; // 1: alternatif toggle
+
+    // >>> YENİ: Aim durumu ve RMB toggle ayarı
+    [Header("Aim State / Input")]
+    public bool isAiming = false;                 // Mevcut aim durumu
+    public bool handleAimInput = true;            // Script RMB'yi kendi okusun mu?
+    public KeyCode aimToggleMouse = KeyCode.Mouse1; // RMB
+    public float aimYawFix = -90f;                // Aim açıkken ekstra Y düzeltmesi (gerekirse +90 yap)
+
+    private GameObject currentPistol;   // Her zaman referans TUTULUR
+    private bool isEquipped;            // Görünürlük durumu
+
+    // ---------- LIFECYCLE ----------
+    void Awake()
     {
-        if (Input.GetKeyDown(equipKey))
-            EquipFromPrefab();   // Q: tak
-
-        if (Input.GetKeyDown(unequipKey))
-            Unequip();           // 1: bırak
-    }
-
-    [ContextMenu("Equip From Prefab")]
-    public void EquipFromPrefab()
-    {
+        // Mount yoksa, isimden bulmayı dener
         if (!rightHandMount)
         {
-            Debug.LogError("[WeaponEquip] rightHandMount atanmadı.");
-            return;
-        }
-        if (!pistolPrefab)
-        {
-            Debug.LogError("[WeaponEquip] pistolPrefab atanmadı.");
-            return;
+            rightHandMount = FindDeep(transform, "RightHand_Mount");
+            if (!rightHandMount) rightHandMount = FindDeep(transform, "RightHand");
+            if (debugLogs && rightHandMount) Debug.Log("[WeaponEquip] Mount otomatik bulundu: " + rightHandMount.name);
         }
 
-        // önce varsa çıkar
-        Unequip();
-
-        // oluştur ve parent et
-        currentPistol = Instantiate(pistolPrefab);
-        AttachToMount(currentPistol.transform);
-        Debug.Log("[WeaponEquip] Pistol equipped from prefab.");
-    }
-
-    public void EquipExisting(Transform pistolInScene)
-    {
-        if (!pistolInScene) { Debug.LogError("[WeaponEquip] Geçersiz pistol referansı."); return; }
-        Unequip();
-        currentPistol = pistolInScene.gameObject;
-        AttachToMount(pistolInScene);
-        Debug.Log("[WeaponEquip] Existing pistol equipped.");
-    }
-
-    // --- Güçlendirilmiş Unequip ---
-    [ContextMenu("Unequip")]
-    public void Unequip()
-    {
-        // 1) currentPistol varsa onu yok et
-        if (currentPistol != null)
-        {
-            Destroy(currentPistol);
-            currentPistol = null;
-            Debug.Log("[WeaponEquip] Pistol unequipped (currentPistol).");
-            return;
-        }
-
-        // 2) currentPistol null ise: mount altında kalmış çocuk var mı?
+        // Sahnedeki mevcut çocukları sahiplen
         if (rightHandMount && rightHandMount.childCount > 0)
         {
-            Transform target = null;
-
-            // prefab adıyla başlayan child'ı bulmaya çalış (tercih)
+            Transform pick = null;
             if (pistolPrefab)
             {
-                for (int i = rightHandMount.childCount - 1; i >= 0; i--)
+                for (int i = 0; i < rightHandMount.childCount; i++)
                 {
                     var ch = rightHandMount.GetChild(i);
                     if (ch.name.StartsWith(pistolPrefab.name))
                     {
-                        target = ch; break;
+                        pick = ch; break;
                     }
                 }
             }
+            if (!pick) pick = rightHandMount.GetChild(rightHandMount.childCount - 1);
 
-            // bulunamazsa son çocuğu sil (fallback)
-            if (target == null)
-                target = rightHandMount.GetChild(rightHandMount.childCount - 1);
-
-            Destroy(target.gameObject);
-            Debug.Log("[WeaponEquip] Pistol unequipped (fallback child).");
-        }
-        else
-        {
-            Debug.Log("[WeaponEquip] Unequip: silinecek bir şey yok.");
+            currentPistol = pick.gameObject;
+            isEquipped = currentPistol.activeSelf;
+            if (debugLogs) Debug.Log("[WeaponEquip] Sahnedeki silah sahiplenildi: " + currentPistol.name + " (equipped=" + isEquipped + ")");
+            if (isEquipped) ApplyCalibrationTo(currentPistol.transform);
         }
     }
 
-    void AttachToMount(Transform pistolT)
+    void Update()
+    {
+        // Equip/Unequip toggle (Q / 1)
+        if (Input.GetKeyDown(toggleKey) || Input.GetKeyDown(altToggleKey))
+        {
+            if (isEquipped) Unequip();
+            else Equip();
+        }
+
+        // >>> YENİ: RMB ile aim toggle
+        if (handleAimInput && Input.GetKeyDown(aimToggleMouse))
+        {
+            isAiming = !isAiming;
+            if (debugLogs) Debug.Log("[WeaponEquip] isAiming = " + isAiming);
+        }
+    }
+
+    void LateUpdate()
+    {
+        // Her karede poz/rotasyonu kilitlemek istersen
+        if (maintainLocalRotationEveryFrame && isEquipped && currentPistol != null)
+        {
+            // Pozisyonu zorla (local)
+            currentPistol.transform.localPosition = positionOffset;
+
+            // Aim açıkken ekstra yaw düzeltmesi uygula
+            if (isAiming)
+            {
+                currentPistol.transform.localRotation =
+                    Quaternion.Euler(rotationOffsetEuler) * Quaternion.Euler(0f, aimYawFix, 0f);
+            }
+            else
+            {
+                currentPistol.transform.localRotation = Quaternion.Euler(rotationOffsetEuler);
+            }
+        }
+    }
+
+    // ---------- PUBLIC BUTTONS ----------
+    [ContextMenu("Force Equip")]
+    public void ForceEquip() => Equip();
+
+    [ContextMenu("Force Unequip")]
+    public void ForceUnequip() => Unequip();
+
+    [ContextMenu("Debug State")]
+    public void DebugState()
+    {
+        int cc = rightHandMount ? rightHandMount.childCount : -1;
+        Debug.Log($"[WeaponEquip] isEquipped={isEquipped}, isAiming={isAiming}, current={(currentPistol ? currentPistol.name : "NULL")}, mountChildren={cc}");
+        if (rightHandMount)
+        {
+            for (int i = 0; i < rightHandMount.childCount; i++)
+                Debug.Log($"  - child[{i}] {rightHandMount.GetChild(i).name} (active={rightHandMount.GetChild(i).gameObject.activeSelf})");
+        }
+    }
+
+    // ---------- CORE ----------
+    private void Equip()
+    {
+        if (!rightHandMount || !EnsurePrefabAssigned()) return;
+
+        if (currentPistol == null)
+        {
+            currentPistol = Instantiate(pistolPrefab);
+            if (debugLogs) Debug.Log("[WeaponEquip] Instantiate: " + currentPistol.name);
+        }
+
+        AttachToMount(currentPistol.transform);
+        currentPistol.SetActive(true);
+        isEquipped = true;
+
+        if (debugLogs) Debug.Log("[WeaponEquip] EQUIPPED");
+    }
+
+    private void Unequip()
+    {
+        if (currentPistol == null)
+        {
+            if (rightHandMount && rightHandMount.childCount > 0)
+            {
+                currentPistol = rightHandMount.GetChild(rightHandMount.childCount - 1).gameObject;
+            }
+            else
+            {
+                if (debugLogs) Debug.Log("[WeaponEquip] Unequip: silah yok.");
+                isEquipped = false;
+                return;
+            }
+        }
+
+        currentPistol.SetActive(false);
+        isEquipped = false;
+        if (debugLogs) Debug.Log("[WeaponEquip] UNEQUIPPED (SetActive false)");
+    }
+
+    private void AttachToMount(Transform pistolT)
     {
         pistolT.SetParent(rightHandMount, worldPositionStays: maintainWorldPose);
 
+        bool aligned = false;
         if (useGripAlignment)
         {
             var grip = pistolT.Find("Grip");
             if (grip)
             {
-                // Grip ofsetini tersleyerek mount'a sıfırla
                 pistolT.localRotation *= Quaternion.Inverse(grip.localRotation);
                 pistolT.localPosition -= grip.localPosition;
+                aligned = true;
             }
         }
 
-        pistolT.localScale = Vector3.one;
-
-        if (!useGripAlignment || !pistolT.Find("Grip"))
+        if (!aligned)
         {
             pistolT.localPosition = Vector3.zero;
             pistolT.localRotation = Quaternion.identity;
         }
+
+        // Kalibrasyon
+        ApplyCalibrationTo(pistolT);
+
+        pistolT.localScale = Vector3.one;
     }
 
-    // --- Teşhis yardımcıları ---
-    [ContextMenu("Debug State")]
-    public void DebugState()
+    // ---------- HELPERS ----------
+    private void ApplyCalibrationTo(Transform pistolT)
     {
-        int childCount = rightHandMount ? rightHandMount.childCount : -1;
-        Debug.Log($"[WeaponEquip] currentPistol={(currentPistol ? currentPistol.name : "NULL")}, rightHandMount children={childCount}");
-        if (rightHandMount)
+        pistolT.localPosition += positionOffset;
+        pistolT.localRotation *= Quaternion.Euler(rotationOffsetEuler);
+    }
+
+    private bool EnsurePrefabAssigned()
+    {
+        if (!pistolPrefab)
         {
-            for (int i = 0; i < rightHandMount.childCount; i++)
-                Debug.Log($"  - child[{i}] = {rightHandMount.GetChild(i).name}");
+            Debug.LogWarning("[WeaponEquip] 'pistolPrefab' atanmadı (Inspector).");
+            return false;
         }
+        return true;
     }
 
-    [ContextMenu("Force Unequip (All Children)")]
-    public void ForceUnequipAllChildren()
+    private static Transform FindDeep(Transform root, string namePart)
     {
-        if (!rightHandMount) { Debug.LogWarning("[WeaponEquip] rightHandMount yok."); return; }
-        for (int i = rightHandMount.childCount - 1; i >= 0; i--)
-            Destroy(rightHandMount.GetChild(i).gameObject);
-        currentPistol = null;
-        Debug.Log("[WeaponEquip] FORCE: mount altındaki TÜM çocuklar silindi.");
-    }
-
-    void OnDrawGizmosSelected()
-    {
-        if (!rightHandMount) return;
-        Gizmos.matrix = rightHandMount.localToWorldMatrix;
-        Gizmos.DrawWireSphere(Vector3.zero, 0.02f);
-        Gizmos.DrawRay(Vector3.zero, Vector3.forward * 0.1f); // Z ileri
-        Gizmos.DrawRay(Vector3.zero, Vector3.up * 0.1f);      // Y yukarı
-        Gizmos.DrawRay(Vector3.zero, Vector3.right * 0.1f);   // X sağ
+        if (!root) return null;
+        foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+            if (t.name.Contains(namePart)) return t;
+        return null;
     }
 }
