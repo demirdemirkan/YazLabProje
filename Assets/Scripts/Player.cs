@@ -226,6 +226,7 @@ public class Player : MonoBehaviour
 
     void TriggerIdleAnimation()
     {
+<<<<<<< Updated upstream
         // her durumda Idle'a dön (pistol varyantlarını da kapat)
         animator.ResetTrigger("Walk");
         animator.ResetTrigger("Run");
@@ -242,6 +243,17 @@ public class Player : MonoBehaviour
         isPistolActive = false;
         isPistolWalking = false;
         isPistolCrouched = false;
+=======
+        if (isCharacterWalking || isCharacterRunning)
+        {
+            animator.ResetTrigger("Walk");
+            animator.ResetTrigger("Run");
+            animator.ResetTrigger("CrouchIdle");
+            animator.SetTrigger("Idle");
+            isCharacterWalking = false;
+            isCharacterRunning = false;
+        }
+>>>>>>> Stashed changes
     }
 
     void TriggerRunAnimation()
