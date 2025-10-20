@@ -7,28 +7,37 @@ public class Player : MonoBehaviour
     public float sprintSpeed = 5f;
 
     Rigidbody rb;
-    private bool isCharacterWalking;
-    private bool isCharacterRunning;
-    private bool isCharacterCrouched;
     public Animator animator;
     Vector3 inputDir;
     float currentSpeed;
 
     [Header("Visual")]
-    public Transform model;              // cowboy child'ı
-    public float modelRotateLerp = 12f;  // dönüş yumuşatma
+    public Transform model;
+    public float modelRotateLerp = 12f;
 
     [Header("Crouch")]
-    public float crouchSpeed = 1.5f;     // eğilirken hız
+    public float crouchSpeed = 1.5f;
+    bool isCharacterCrouched;
 
-    [Header("Aim")]
-    public bool isAiming;                 // AimController set eder (toggle RMB)
-    public string aimBoolParam = "Aiming";// Animator bool param adı (opsiyonel)
+    [Header("Aim (AimController set eder)")]
+    public bool isAiming;
+    public string aimBoolParam = "Aiming";
 
-    // Pistol/Aim state takibi (trigger spam önlemek için)
-    private bool isPistolActive;
-    private bool isPistolWalking;
-    private bool isPistolCrouched;
+    enum AnimState
+    {
+        Idle, Walk, Run, CrouchIdle, CrouchWalk,
+        PistolIdle, PistolWalk, PistolCrouchIdle
+    }
+    AnimState currentState = AnimState.Idle;
+
+    const string TR_IDLE = "Idle";
+    const string TR_WALK = "Walk";
+    const string TR_RUN = "Run";
+    const string TR_CROUCH_IDLE = "CrouchIdle";
+    const string TR_CROUCH_WALK = "CrouchWalk";
+    const string TR_PISTOL_IDLE = "PistolIdle";
+    const string TR_PISTOL_WALK = "PistolWalk";
+    const string TR_PISTOL_CROUCHID = "PistolCrouchIdle";
 
     void Awake()
     {
@@ -45,132 +54,69 @@ public class Player : MonoBehaviour
     {
         currentSpeed = Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed;
 
-        // --- Input (KAMERA REFERANSLI) ---
+        // --- Input (kamera referanslı) ---
         inputDir = Vector3.zero;
-
         Transform cam = Camera.main ? Camera.main.transform : null;
-        Vector3 camF = transform.forward; // fallback
-        Vector3 camR = transform.right;
+        Vector3 camF = transform.forward, camR = transform.right;
         if (cam != null)
         {
             camF = cam.forward; camF.y = 0f; camF.Normalize();
             camR = cam.right; camR.y = 0f; camR.Normalize();
         }
-
         if (Input.GetKey(KeyCode.W)) inputDir += camF;
         if (Input.GetKey(KeyCode.S)) inputDir -= camF;
         if (Input.GetKey(KeyCode.A)) inputDir -= camR;
         if (Input.GetKey(KeyCode.D)) inputDir += camR;
 
-        // --- Crouch Toggle (C) ---
+        // C toggle
         if (Input.GetKeyDown(KeyCode.C))
         {
-            if (!isCharacterCrouched)
-            {
-                isCharacterCrouched = true;
-                animator.ResetTrigger("Idle");
-                animator.ResetTrigger("Walk");
-                animator.ResetTrigger("Run");
-                animator.SetTrigger("CrouchIdle");
-                isCharacterWalking = false;
-                isCharacterRunning = false;
-            }
-            else
-            {
-                isCharacterCrouched = false;
-                animator.ResetTrigger("CrouchIdle");
-                animator.ResetTrigger("CrouchWalk");
-                animator.SetTrigger("Idle");
-                isCharacterWalking = false;
-                isCharacterRunning = false;
-            }
+            isCharacterCrouched = !isCharacterCrouched;
+            // Aim açıkken normal crouch trigger’ları atmayacağız; state machine halleder.
         }
 
         // Crouch hız limiti
         if (isCharacterCrouched)
             currentSpeed = Mathf.Min(currentSpeed, crouchSpeed);
 
-        // --- Animasyon Kararı ---
-        bool moving = inputDir.magnitude >= 0.1f;
+        bool moving = inputDir.sqrMagnitude >= 0.01f;
         bool sprint = moving && Input.GetKey(KeyCode.LeftShift);
 
-        // NİŞAN ÖNCELİKLİ
+        if (animator) animator.SetBool(aimBoolParam, isAiming);
+
+        // --- Hedef durumu hesapla ---
+        AnimState next = currentState;
+
         if (isAiming)
         {
-            if (animator) animator.SetBool(aimBoolParam, true);
-
             if (isCharacterCrouched)
             {
-                // Nişan + eğilmişken HER ZAMAN crouch idle (yürüse bile üst gövde idle)
-                TriggerPistolCrouchIdleAnimation();
-                isCharacterWalking = false;
-                isCharacterRunning = false;
+                // İSTEDİĞİN DEĞİŞİKLİK: crouch + aim → hareket ediyorsa PistolWalk, duruyorsa PistolCrouchIdle
+                next = moving ? AnimState.PistolWalk : AnimState.PistolCrouchIdle;
             }
             else
             {
-                // Nişan + ayakta: duruyorsa idle, hareket varsa walk
-                if (!moving)
-                {
-                    TriggerPistolIdleAnimation();
-                    isCharacterWalking = false;
-                    isCharacterRunning = false;
-                }
-                else
-                {
-                    TriggerPistolWalkAnimation();
-                    isCharacterWalking = true;   // pistol-walk
-                    isCharacterRunning = false;
-                }
+                next = moving ? AnimState.PistolWalk : AnimState.PistolIdle;
             }
         }
         else
         {
-            // nişandan çıkarken tüm pistol state'lerini kapat
-            if (isPistolActive)
-            {
-                ResetPistolTriggers();
-                isPistolActive = false;
-                isPistolWalking = false;
-                isPistolCrouched = false;
-            }
-
-            if (animator) animator.SetBool(aimBoolParam, false);
-
-            // Normal/Crouch akışı
             if (isCharacterCrouched)
             {
-                if (!moving)
-                {
-                    TriggerCrouchIdleAnimation();
-                    isCharacterWalking = false;
-                    isCharacterRunning = false;
-                }
-                else
-                {
-                    TriggerCrouchWalkAnimation();
-                    isCharacterWalking = true;
-                    isCharacterRunning = false;
-                }
+                next = moving ? AnimState.CrouchWalk : AnimState.CrouchIdle;
             }
             else
             {
-                if (!moving)
-                {
-                    TriggerIdleAnimation();
-                    isCharacterWalking = false;
-                    isCharacterRunning = false;
-                }
-                else if (sprint)
-                {
-                    TriggerRunAnimation();
-                }
-                else
-                {
-                    isCharacterRunning = false;
-                    TriggerWalkAnimation();
-                    isCharacterWalking = true;
-                }
+                if (!moving) next = AnimState.Idle;
+                else next = (sprint ? AnimState.Run : AnimState.Walk);
             }
+        }
+
+        // --- Yalnızca değiştiyse trigger at ---
+        if (next != currentState)
+        {
+            FireTransition(next);
+            currentState = next;
         }
 
         inputDir = inputDir.normalized;
@@ -178,29 +124,22 @@ public class Player : MonoBehaviour
 
     void FixedUpdate()
     {
-        // Y bileşenini koru
+        // hız uygula
         Vector3 v = rb.velocity;
-
-        // Hedef yatay hız
         Vector3 targetXZ = inputDir * currentSpeed;
-
-        // XZ hızını ayarla
-        v.x = targetXZ.x;
-        v.z = targetXZ.z;
+        v.x = targetXZ.x; v.z = targetXZ.z;
         rb.velocity = v;
 
-        // Model dönüşü: normalde hareket yönüne; aim'de kameraya
+        // model dönüşü: normalde hareket yönüne; aim'de kameraya
         if (model != null)
         {
             Vector3 faceDir = inputDir;
-
             if (isAiming)
             {
                 var camTr = Camera.main ? Camera.main.transform : null;
                 if (camTr)
                 {
-                    faceDir = camTr.forward;
-                    faceDir.y = 0f;
+                    faceDir = camTr.forward; faceDir.y = 0f;
                     if (faceDir.sqrMagnitude < 0.0001f) faceDir = transform.forward;
                     faceDir.Normalize();
                 }
@@ -214,115 +153,29 @@ public class Player : MonoBehaviour
         }
     }
 
-    // -------- NORMAL STATE TRIGGER'LARI --------
-    void TriggerWalkAnimation()
+    void FireTransition(AnimState next)
     {
-        if (!isCharacterWalking)
+        // Temizle (sadece değişimde)
+        animator.ResetTrigger(TR_IDLE);
+        animator.ResetTrigger(TR_WALK);
+        animator.ResetTrigger(TR_RUN);
+        animator.ResetTrigger(TR_CROUCH_IDLE);
+        animator.ResetTrigger(TR_CROUCH_WALK);
+        animator.ResetTrigger(TR_PISTOL_IDLE);
+        animator.ResetTrigger(TR_PISTOL_WALK);
+        animator.ResetTrigger(TR_PISTOL_CROUCHID);
+
+        // Hedef trigger
+        switch (next)
         {
-            animator.SetTrigger("Walk");
-            isCharacterWalking = true;
+            case AnimState.Idle: animator.SetTrigger(TR_IDLE); break;
+            case AnimState.Walk: animator.SetTrigger(TR_WALK); break;
+            case AnimState.Run: animator.SetTrigger(TR_RUN); break;
+            case AnimState.CrouchIdle: animator.SetTrigger(TR_CROUCH_IDLE); break;
+            case AnimState.CrouchWalk: animator.SetTrigger(TR_CROUCH_WALK); break;
+            case AnimState.PistolIdle: animator.SetTrigger(TR_PISTOL_IDLE); break;
+            case AnimState.PistolWalk: animator.SetTrigger(TR_PISTOL_WALK); break;
+            case AnimState.PistolCrouchIdle: animator.SetTrigger(TR_PISTOL_CROUCHID); break;
         }
-    }
-
-    void TriggerIdleAnimation()
-    {
-<<<<<<< Updated upstream
-        // her durumda Idle'a dön (pistol varyantlarını da kapat)
-        animator.ResetTrigger("Walk");
-        animator.ResetTrigger("Run");
-        animator.ResetTrigger("CrouchIdle");
-
-        animator.ResetTrigger("PistolIdle");
-        animator.ResetTrigger("PistolWalk");
-        animator.ResetTrigger("PistolCrouchIdle");
-
-        animator.SetTrigger("Idle");
-
-        isCharacterWalking = false;
-        isCharacterRunning = false;
-        isPistolActive = false;
-        isPistolWalking = false;
-        isPistolCrouched = false;
-=======
-        if (isCharacterWalking || isCharacterRunning)
-        {
-            animator.ResetTrigger("Walk");
-            animator.ResetTrigger("Run");
-            animator.ResetTrigger("CrouchIdle");
-            animator.SetTrigger("Idle");
-            isCharacterWalking = false;
-            isCharacterRunning = false;
-        }
->>>>>>> Stashed changes
-    }
-
-    void TriggerRunAnimation()
-    {
-        if (!isCharacterRunning)
-        {
-            animator.SetTrigger("Run");
-            isCharacterRunning = true;
-            isCharacterWalking = false;
-        }
-    }
-
-    void TriggerCrouchIdleAnimation()
-    {
-        animator.SetTrigger("CrouchIdle");
-    }
-
-    void TriggerCrouchWalkAnimation()
-    {
-        animator.SetTrigger("CrouchWalk");
-    }
-
-    // -------- PISTOL (AIM) TRIGGER'LARI --------
-    void TriggerPistolIdleAnimation()
-    {
-        if (!isPistolActive || isPistolWalking || isPistolCrouched)
-        {
-            animator.ResetTrigger("PistolWalk");
-            animator.ResetTrigger("PistolCrouchIdle");
-            animator.SetTrigger("PistolIdle");
-
-            isPistolActive = true;
-            isPistolWalking = false;
-            isPistolCrouched = false;
-        }
-    }
-
-    void TriggerPistolWalkAnimation()
-    {
-        if (!isPistolActive || !isPistolWalking || isPistolCrouched)
-        {
-            animator.ResetTrigger("PistolIdle");
-            animator.ResetTrigger("PistolCrouchIdle");
-            animator.SetTrigger("PistolWalk");
-
-            isPistolActive = true;
-            isPistolWalking = true;
-            isPistolCrouched = false;
-        }
-    }
-
-    void TriggerPistolCrouchIdleAnimation()
-    {
-        if (!isPistolActive || isPistolWalking || !isPistolCrouched)
-        {
-            animator.ResetTrigger("PistolWalk");
-            animator.ResetTrigger("PistolIdle");
-            animator.SetTrigger("PistolCrouchIdle");
-
-            isPistolActive = true;
-            isPistolWalking = false;
-            isPistolCrouched = true;
-        }
-    }
-
-    void ResetPistolTriggers()
-    {
-        animator.ResetTrigger("PistolIdle");
-        animator.ResetTrigger("PistolWalk");
-        animator.ResetTrigger("PistolCrouchIdle");
     }
 }
