@@ -3697,31 +3697,31 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 413848, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.97960025
+      value: 0.8858578
       objectReference: {fileID: 0}
     - target: {fileID: 413848, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.037808616
+      value: 0.033486966
       objectReference: {fileID: 0}
     - target: {fileID: 413848, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.19726077
+      value: -0.46236816
       objectReference: {fileID: 0}
     - target: {fileID: 413848, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.006494209
+      value: -0.018716024
       objectReference: {fileID: 0}
     - target: {fileID: 413848, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: -184.101
+      value: -182.408
       objectReference: {fileID: 0}
     - target: {fileID: 413848, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: -157.173
+      value: -235.201
       objectReference: {fileID: 0}
     - target: {fileID: 413848, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 181.588
+      value: 176.32
       objectReference: {fileID: 0}
     - target: {fileID: 9556666, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       propertyPath: m_Controller
@@ -6130,7 +6130,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 4281780448642680, guid: 0f9577b4dda6cc546abea4737be5a392, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1417977336}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 0f9577b4dda6cc546abea4737be5a392, type: 3}
 --- !u!4 &953253994 stripped
@@ -7342,7 +7345,6 @@ Transform:
   - {fileID: 856472513}
   - {fileID: 32291297}
   - {fileID: 504145471}
-  - {fileID: 1417977336}
   - {fileID: 923838558}
   - {fileID: 996443005}
   - {fileID: 400274235}
@@ -8068,7 +8070,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 1147264781}
+    m_TransformParent: {fileID: 953253994}
     m_Modifications:
     - target: {fileID: 1484873974708226, guid: 0f9577b4dda6cc546abea4737be5a392, type: 3}
       propertyPath: m_Name
@@ -8092,19 +8094,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4281780448642680, guid: 0f9577b4dda6cc546abea4737be5a392, type: 3}
       propertyPath: m_LocalScale.z
-      value: 1.70694
+      value: 1.7069399
       objectReference: {fileID: 0}
     - target: {fileID: 4281780448642680, guid: 0f9577b4dda6cc546abea4737be5a392, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 5.24
+      value: 17.65
       objectReference: {fileID: 0}
     - target: {fileID: 4281780448642680, guid: 0f9577b4dda6cc546abea4737be5a392, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.11
+      value: 1.92
       objectReference: {fileID: 0}
     - target: {fileID: 4281780448642680, guid: 0f9577b4dda6cc546abea4737be5a392, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 6.09
+      value: -8.96
       objectReference: {fileID: 0}
     - target: {fileID: 4281780448642680, guid: 0f9577b4dda6cc546abea4737be5a392, type: 3}
       propertyPath: m_LocalRotation.w
@@ -11466,6 +11468,7 @@ MonoBehaviour:
   modelRotateLerp: 12
   crouchSpeed: 1.5
   isAiming: 0
+  aimBoolParam: Aiming
 --- !u!4 &1991641314
 Transform:
   m_ObjectHideFlags: 0
@@ -11548,8 +11551,16 @@ MonoBehaviour:
   pistolPrefab: {fileID: 286803486152486028, guid: 7223499eba89ab44ea8fca1df5cc5c18, type: 3}
   useGripAlignment: 1
   maintainWorldPose: 0
-  equipKey: 113
-  unequipKey: 49
+  debugLogs: 1
+  positionOffset: {x: 0, y: 0, z: 0}
+  rotationOffsetEuler: {x: 0, y: 0, z: 0}
+  maintainLocalRotationEveryFrame: 0
+  toggleKey: 113
+  altToggleKey: 49
+  isAiming: 0
+  handleAimInput: 1
+  aimToggleMouse: 324
+  aimYawFix: -90
 --- !u!1001 &1994525081
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -11917,14 +11928,14 @@ MonoBehaviour:
   player: {fileID: 1991641313}
   playerAnimator: {fileID: 470464687}
   cameraController: {fileID: 2018271283}
-  aimKey: 324
+  crosshairUI: {fileID: 1709233258}
+  aimToggleKey: 324
   normalFov: 70
   aimFov: 62
   fovLerp: 8
   normalDistance: 2.2
   aimDistance: 2
   distanceLerp: 8
-  crosshairUI: {fileID: 1709233258}
 --- !u!1 &2020608216 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1218347679047942, guid: fa6105287f77b1240a0017f7d23434c2, type: 3}

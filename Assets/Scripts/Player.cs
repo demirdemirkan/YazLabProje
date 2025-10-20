@@ -125,10 +125,10 @@ public class Player : MonoBehaviour
     void FixedUpdate()
     {
         // hız uygula
-        Vector3 v = rb.velocity;
+        Vector3 v = rb.linearVelocity;
         Vector3 targetXZ = inputDir * currentSpeed;
         v.x = targetXZ.x; v.z = targetXZ.z;
-        rb.velocity = v;
+        rb.linearVelocity = v;
 
         // model dönüşü: normalde hareket yönüne; aim'de kameraya
         if (model != null)
