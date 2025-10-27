@@ -5,25 +5,25 @@ using UnityEngine.AI;
 public class EnemySpawner : MonoBehaviour
 {
     [Header("Prefab")]
-    public GameObject enemyPrefab;          // Düþman prefabýný sürükle (öneri: içinde NavMeshAgent olsun)
+    public GameObject enemyPrefab;
 
     [Header("When to spawn")]
-    public bool spawnOnStart = true;        // Oyun baþýnda otomatik üret
-    public int spawnCount = 5;              // Kaç tane üretilecek
+    public bool spawnOnStart = true;
+    public int spawnCount = 5;
 
     [Header("Where to spawn")]
-    public float spawnRadius = 30f;         // Bu objenin (veya seçilen alanýn) etrafýnda
-    public Transform[] spawnAreas;          // Opsiyonel: belirli merkezler (rasgele biri seçilir)
+    public float spawnRadius = 30f;
+    public Transform[] spawnAreas;
 
     [Header("Safety")]
-    public float sampleMaxDistance = 4f;    // NavMesh.SamplePosition yarýçapý
-    public float minDistanceBetweenEnemies = 2.0f;  // Birbirine çok yapýþmasýnlar
-    public float minDistanceFromPlayer = 8.0f;      // Oyuncunun dibine doðmasýnlar
-    public LayerMask groundMask = ~0;       // (opsiyonel) yere ray atýp saðlamasýný yapar
+    public float sampleMaxDistance = 6f;          // NavMesh.SamplePosition yarýçapý
+    public float minDistanceBetweenEnemies = 2f;  // Birbirine yapýþmasýn
+    public float minDistanceFromPlayer = 8f;      // Oyuncunun dibine doðmasýn
+    public LayerMask groundMask = ~0;             // Zemini kapsasýn
 
     // Dahili
-    List<Transform> _spawned = new List<Transform>();
-    Transform _player;
+    private readonly List<Transform> _spawned = new List<Transform>();
+    private Transform _player;
 
     void Awake()
     {
@@ -33,8 +33,7 @@ public class EnemySpawner : MonoBehaviour
 
     void Start()
     {
-        if (spawnOnStart)
-            SpawnWave(spawnCount);
+        if (spawnOnStart) SpawnWave(spawnCount);
     }
 
     [ContextMenu("Spawn One")]
@@ -44,36 +43,32 @@ public class EnemySpawner : MonoBehaviour
     public void ClearAll()
     {
         for (int i = _spawned.Count - 1; i >= 0; i--)
-        {
             if (_spawned[i]) Destroy(_spawned[i].gameObject);
-        }
         _spawned.Clear();
     }
 
     public void SpawnWave(int count)
     {
-        int spawned = 0;
-        int safety = 0;
-        while (spawned < count && safety < count * 20)
+        int spawned = 0, safety = 0;
+        while (spawned < count && safety < count * 30)
         {
             safety++;
-            if (SpawnOne())
-                spawned++;
+            if (SpawnOne()) spawned++;
         }
 
         if (spawned < count)
-            Debug.LogWarning($"[EnemySpawner] Ýstenen {count} adetten {spawned} adet spawn edilebildi. NavMesh alanýný ya da ayarlarý kontrol et.");
+            Debug.LogWarning($"[EnemySpawner] Ýstenen {count} adetten {spawned} adet spawn edildi. NavMesh/Layer ayarlarýný kontrol et.");
     }
 
     bool SpawnOne()
     {
         if (!enemyPrefab)
         {
-            Debug.LogError("[EnemySpawner] enemyPrefab atanmamýþ.");
+            Debug.LogError("[EnemySpawner] enemyPrefab atanmadý.");
             return false;
         }
 
-        // 1) Merkez seç (spawnAreas varsa onlardan biri, yoksa bu objenin konumu)
+        // 1) Merkez
         Vector3 center = transform.position;
         if (spawnAreas != null && spawnAreas.Length > 0)
         {
@@ -81,21 +76,19 @@ public class EnemySpawner : MonoBehaviour
             if (t) center = t.position;
         }
 
-        // 2) Rastgele bir hedef nokta öner
+        // 2) Rastgele öneri
         Vector2 r = Random.insideUnitCircle * spawnRadius;
-        Vector3 candidate = center + new Vector3(r.x, 0f, r.y);
+        Vector3 candidate = center + new Vector3(r.x, 2f, r.y); // hafif yukarýdan
 
-        // 3) NavMesh üzerinde en yakýn geçerli nokta
-        if (!NavMesh.SamplePosition(candidate, out var hit, sampleMaxDistance, NavMesh.AllAreas))
-            return false; // Bu deneme baþarýsýz, tekrar deneriz
-
-        Vector3 spawnPos = hit.position;
-
-        // 4) Oyuncuya çok yakýn doðmasýn
-        if (_player && Vector3.Distance(spawnPos, _player.position) < minDistanceFromPlayer)
+        // 3) NavMesh üzerinde en yakýn nokta
+        if (!NavMesh.SamplePosition(candidate, out var meshHit, sampleMaxDistance, NavMesh.AllAreas))
             return false;
 
-        // 5) Baþka düþmanlarýn dibine doðmasýn
+        Vector3 spawnPos = meshHit.position + Vector3.up * 0.5f; // biraz yukarý buffer
+
+        // 4) Oyuncuya ve diðer düþmanlara mesafe
+        if (_player && Vector3.Distance(spawnPos, _player.position) < minDistanceFromPlayer)
+            return false;
         for (int i = 0; i < _spawned.Count; i++)
         {
             var t = _spawned[i];
@@ -104,22 +97,36 @@ public class EnemySpawner : MonoBehaviour
                 return false;
         }
 
-        // 6) (Opsiyonel) Yüzeye oturtmak için kýsa bir yere ray
-        if (Physics.Raycast(spawnPos + Vector3.up * 2f, Vector3.down, out var groundHit, 5f, groundMask, QueryTriggerInteraction.Ignore))
-            spawnPos.y = groundHit.point.y;
+        // 5) Raycast ile zemine “snap”
+        if (Physics.Raycast(spawnPos + Vector3.up * 2f, Vector3.down, out var gh, 6f, groundMask, QueryTriggerInteraction.Ignore))
+            spawnPos = gh.point + Vector3.up * 0.02f;
 
-        // 7) Üret
+        // 6) Üret
         var go = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
         _spawned.Add(go.transform);
 
-        // 8) Güvence: Agent varsa hemen NavMesh üzerindeyiz mi?
+        // 7) Agent varsa güvenli warp
         var agent = go.GetComponent<NavMeshAgent>();
         if (agent)
         {
-            // Agent zemine gömülmesin diye baseOffset’i sýfýrla
             agent.baseOffset = 0f;
+
+            // Eðer doðduðu nokta NavMesh dýþýnda görünürse, en yakýna örnekle
             if (!agent.isOnNavMesh)
-                Debug.LogWarning("[EnemySpawner] Spawnlanan ajan NavMesh üzerinde deðil görünüyor (spawn alaný/bake ayarýný kontrol et).");
+            {
+                if (NavMesh.SamplePosition(spawnPos, out var fix, sampleMaxDistance, NavMesh.AllAreas))
+                    spawnPos = fix.position + Vector3.up * 0.02f;
+                else
+                    Debug.LogWarning("[EnemySpawner] NavMesh bulunamadý, transform.position kullanýlacak.");
+            }
+
+            // Ajanýn iç dengesini de o konuma getir
+            agent.Warp(spawnPos);
+            agent.nextPosition = spawnPos;
+        }
+        else
+        {
+            go.transform.position = spawnPos;
         }
 
         return true;
@@ -132,12 +139,7 @@ public class EnemySpawner : MonoBehaviour
         Vector3 center = transform.position;
         if (spawnAreas != null && spawnAreas.Length > 0)
         {
-            foreach (var t in spawnAreas)
-            {
-                if (!t) continue;
-                Gizmos.DrawSphere(t.position, 0.4f);
-            }
-            // gösterim için ortalamayý alalým
+            foreach (var t in spawnAreas) { if (!t) continue; Gizmos.DrawSphere(t.position, 0.4f); }
             int c = 0; Vector3 sum = Vector3.zero;
             foreach (var t in spawnAreas) { if (t) { sum += t.position; c++; } }
             if (c > 0) center = sum / c;
