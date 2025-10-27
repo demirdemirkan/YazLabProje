@@ -4813,13 +4813,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 746584932}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.00014707816, y: 0.1452864, z: -0.052609205, w: -0.98798996}
-  m_LocalPosition: {x: -17.49, y: -12.9, z: 35.4}
+  m_LocalRotation: {x: -0.41128644, y: 0.3050676, z: -0.38524655, w: -0.76769936}
+  m_LocalPosition: {x: -17.490011, y: -12.9, z: 35.40002}
   m_LocalScale: {x: 4.1402373, y: 7.9361763, z: 8.490916}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1508611675}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 60.059, y: -17.671, z: 43.028}
 --- !u!4 &768643738 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 626351010050618934, guid: 7223499eba89ab44ea8fca1df5cc5c18, type: 3}
@@ -7764,14 +7764,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b288337569c33045bda301c8db09a41, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAI
-  player: {fileID: 1991641314}
+  player: {fileID: 470464688}
   animator: {fileID: 1247258593}
   sightRange: 15
   loseRange: 20
   attackRange: 1.8
-  attackAngle: 60
-  patrolMoveSpeed: 3
-  chaseMoveSpeed: 5.5
+  attackAngle: 50
+  patrolMoveSpeed: 2
+  chaseMoveSpeed: 4
   angularSpeed: 720
   faceTurnLerp: 12
   patrolRadius: 6
@@ -11966,8 +11966,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 65e6333a71c76de4983e0a9809f12a78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Player
-  walkSpeed: 2
-  sprintSpeed: 5
+  walkSpeed: 3
+  sprintSpeed: 6.5
   capsule: {fileID: 0}
   childCapsuleHint: {fileID: 470464689}
   capsuleChildNameHint: cowboy
@@ -12051,13 +12051,13 @@ MonoBehaviour:
   pistolPrefab: {fileID: 286803486152486028, guid: 7223499eba89ab44ea8fca1df5cc5c18, type: 3}
   useGripAlignment: 1
   debugLogs: 1
-  positionOffset: {x: 0, y: 0, z: 0}
-  rotationOffsetEuler: {x: 0, y: 0, z: 0}
-  maintainLocalRotationEveryFrame: 0
+  positionOffset: {x: -0.09, y: -0.04, z: 0.05}
+  rotationOffsetEuler: {x: 180, y: -105, z: 0}
+  maintainLocalRotationEveryFrame: 1
   enableLocalToggle: 0
   toggleKey: 113
   altToggleKey: 49
-  isAiming: 0
+  isAiming: 1
   handleAimInput: 1
   aimToggleMouse: 324
   aimYawFix: -90
