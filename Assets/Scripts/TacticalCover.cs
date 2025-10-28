@@ -14,28 +14,37 @@ public class TacticalCover : MonoBehaviour
     public float findCoverDistance = 2.0f;
     public float findCoverRadius = 0.55f;
     public float snapDepth = 0.25f;   // duvara yaklaşım derinliği
-    public float maxEnterAngle = 85f;     // duvara bakış toleransı (0-90)
+    public float maxEnterAngle = 75f;     // stabil için 70-75 iyi
 
     [Header("Move Along Cover")]
-    public float slideSpeed = 2.2f;           // A/D ile duvar boyunca kayma
-    public float friction = 12f;            // hız lerp katsayısı
+    public float slideSpeed = 2.2f;
+    public float friction = 12f;
 
     [Header("Peek / Lean (camera offset)")]
-    public float leanAmount = 0.25f;          // X ofset
-    public float leanHeadUp = 0.08f;          // Y ofset
-    public float leanRotDeg = 10f;            // Z rotasyon (roll)
-    public float leanLerp = 10f;            // lerp hızı
+    public float leanAmount = 0.25f;
+    public float leanHeadUp = 0.08f;
+    public float leanRotDeg = 10f;
+    public float leanLerp = 10f;
 
     [Header("Animator (optional)")]
     public Animator animator;
     public string inCoverBool = "InCover";
-    public string leanFloat = "Lean";       // -1..+1
-    public string movingFloat = "CoverSpeed"; // 0..1
+    public string leanFloat = "Lean";         // -1..+1
+    public string movingFloat = "CoverSpeed";   // 0..1 (BlendTree Y)
+    public string coverDirFloat = "CoverDir";     // -1..+1 (BlendTree X)
 
     [Header("Camera (optional)")]
     public Transform cameraRig; // yoksa Awake'de Main Camera bulunur
     public Vector3 cameraLocalOffsetCover = new Vector3(0.15f, 0.05f, 0f);
     public Vector3 cameraLocalOffsetDefault = Vector3.zero;
+
+    [Header("Stabilite")]
+    public float enterGrace = 0.25f; // cover'a girdikten sonra kısa süre çıkma
+    float enterGraceTimer = 0f;
+
+    [Header("Root Motion Control")]
+    public bool disableRootMotionInCover = true;
+    bool savedApplyRootMotion = false;
 
     [Header("Debug")]
     public bool debugLogs = true;
@@ -49,6 +58,8 @@ public class TacticalCover : MonoBehaviour
     // refs
     Transform tr;
     Rigidbody rb;
+    CapsuleCollider capCol;
+    CharacterController cc;
 
     // arama yükseklikleri (karakter boyuna göre ayarlanır)
     float chestY = 1.0f;
@@ -59,6 +70,8 @@ public class TacticalCover : MonoBehaviour
     {
         tr = transform;
         rb = GetComponent<Rigidbody>();
+        capCol = GetComponent<CapsuleCollider>();
+        cc = GetComponent<CharacterController>();
 
         // Kamera otomatik: Rig yoksa Main Camera (parent varsa parent)
         if (cameraRig == null && Camera.main != null)
@@ -75,15 +88,13 @@ public class TacticalCover : MonoBehaviour
         }
 
         // Yükseklikleri mevcut colliderlardan çıkar
-        var cap = GetComponent<CapsuleCollider>();
-        if (cap)
+        if (capCol)
         {
-            float h = Mathf.Max(1.4f, cap.height);
+            float h = Mathf.Max(1.4f, capCol.height);
             chestY = Mathf.Clamp(h * 0.55f, 0.8f, 1.4f);
             waistY = Mathf.Clamp(h * 0.40f, 0.5f, 1.2f);
             kneeY = Mathf.Clamp(h * 0.25f, 0.3f, 0.9f);
         }
-        var cc = GetComponent<CharacterController>();
         if (cc)
         {
             float h = Mathf.Max(1.6f, cc.height);
@@ -104,26 +115,44 @@ public class TacticalCover : MonoBehaviour
 
         if (!inCover) return;
 
+        // girişten hemen sonra kısa süre çıkma (grace)
+        if (enterGraceTimer > 0f) enterGraceTimer -= Time.deltaTime;
+
         MaintainSnap();
 
-        // A/D ile duvar boyunca kay
-        float h = (Input.GetKey(KeyCode.A) ? -1f : 0f) + (Input.GetKey(KeyCode.D) ? 1f : 0f);
+        // Yan hareket girdisi (A/D + Q/E)
+        float h = 0f;
+        if (Input.GetKey(KeyCode.A)) h -= 1f;
+        if (Input.GetKey(KeyCode.D)) h += 1f;
+        if (Input.GetKey(leanLeftKey)) h -= 1f;  // Q = sola hareket de etsin
+        if (Input.GetKey(leanRightKey)) h += 1f;  // E = sağa hareket de etsin
+        h = Mathf.Clamp(h, -1f, 1f);
+
         SlideAlong(h);
 
-        // Lean hesapla
+        // Lean hesapla (Q/E aim ile beraber çalışır)
         float lean = 0f;
         if (Input.GetKey(leanLeftKey)) lean -= 1f;
         if (Input.GetKey(leanRightKey)) lean += 1f;
-        if (Mathf.Approximately(lean, 0f) && Input.GetKey(aimKey)) lean = 0.6f; // aim'de hafif sağ peek
+        if (Mathf.Approximately(lean, 0f) && Input.GetKey(aimKey)) lean = 0.6f;
         ApplyLean(lean);
 
-        // Animator
+        // Animator paramları
         if (animator)
         {
             animator.SetBool(inCoverBool, true);
+            // BlendTree Y: hız
+            float curMove = animator.GetFloat(movingFloat);
+            animator.SetFloat(movingFloat, Mathf.Lerp(curMove, Mathf.Abs(h), Time.deltaTime * 10f));
+            // BlendTree X: yön (-1 sol, +1 sağ)
+            float curDir = animator.GetFloat(coverDirFloat);
+            animator.SetFloat(coverDirFloat, Mathf.Lerp(curDir, h, Time.deltaTime * 10f));
+            // Lean layer
             animator.SetFloat(leanFloat, Mathf.Lerp(animator.GetFloat(leanFloat), lean, Time.deltaTime * 10f));
-            animator.SetFloat(movingFloat, Mathf.Lerp(animator.GetFloat(movingFloat), Mathf.Abs(h), Time.deltaTime * 10f));
         }
+
+        // --- duvar depenetrasyon (Update tarafında da koru)
+        ResolveWallPenetration();
     }
 
     // ===== COVER'A GİRİŞ =====
@@ -209,8 +238,20 @@ public class TacticalCover : MonoBehaviour
                     FaceTangent();
 
                     inCover = true;
-                    if (animator) animator.SetBool(inCoverBool, true);
+                    if (animator)
+                    {
+                        if (disableRootMotionInCover)
+                        {
+                            savedApplyRootMotion = animator.applyRootMotion;
+                            animator.applyRootMotion = false; // root motion kapat
+                        }
+                        animator.SetTrigger("CoverEnter");
+                        animator.SetBool(inCoverBool, true);
+                    }
                     if (cameraRig) cameraRig.localPosition = Vector3.Lerp(cameraRig.localPosition, cameraLocalOffsetCover, 1f);
+
+                    // grace
+                    enterGraceTimer = enterGrace;
 
                     if (debugLogs) Debug.Log($"[Cover] Fallback (no normal ray). Collider={best.name}");
                     return;
@@ -232,8 +273,20 @@ public class TacticalCover : MonoBehaviour
         FaceTangent();
 
         inCover = true;
-        if (animator) animator.SetBool(inCoverBool, true);
+        if (animator)
+        {
+            if (disableRootMotionInCover)
+            {
+                savedApplyRootMotion = animator.applyRootMotion;
+                animator.applyRootMotion = false; // root motion kapat
+            }
+            animator.SetTrigger("CoverEnter");   // giriş animasyonu
+            animator.SetBool(inCoverBool, true); // cover mod
+        }
         if (cameraRig) cameraRig.localPosition = Vector3.Lerp(cameraRig.localPosition, cameraLocalOffsetCover, 1f);
+
+        // grace başlat
+        enterGraceTimer = enterGrace;
 
         if (debugLogs)
             Debug.Log($"{reason}: collider={hit.collider.name}, dist={hit.distance:F2}, angle={Vector3.Angle(-hit.normal, tr.forward):F1}");
@@ -253,14 +306,32 @@ public class TacticalCover : MonoBehaviour
         bool ok = false;
         RaycastHit lastHit = default;
 
+        // 1) Geriye (duvara) doğru tarama
         foreach (var o in origins)
         {
-            if (Physics.SphereCast(o, findCoverRadius * 0.75f, -coverNormal, out RaycastHit hit, 0.7f, coverMask, QueryTriggerInteraction.Ignore))
+            if (Physics.SphereCast(o, findCoverRadius * 0.75f, -coverNormal, out RaycastHit hit, 1.0f, coverMask, QueryTriggerInteraction.Ignore))
             {
                 lastHit = hit;
                 ok = true;
                 break;
             }
+        }
+
+        // 2) İlk tarama başarısızsa ve grace sürüyorsa, coverNormal yönüne kısa kurtarma taraması
+        if (!ok && enterGraceTimer > 0f)
+        {
+            foreach (var o in origins)
+            {
+                if (Physics.SphereCast(o, findCoverRadius * 0.75f, coverNormal, out RaycastHit hit2, 1.0f, coverMask, QueryTriggerInteraction.Ignore))
+                {
+                    lastHit = hit2;
+                    ok = true;
+                    break;
+                }
+            }
+
+            // Hâlâ yoksa, grace bitene kadar çıkma (mikro jitter’ı tolere et)
+            if (!ok) return;
         }
 
         if (!ok)
@@ -273,6 +344,9 @@ public class TacticalCover : MonoBehaviour
         Vector3 want = GetSafeSnapTarget(lastHit);
         Vector3 p = Vector3.Lerp(tr.position, want, Time.deltaTime * Mathf.Max(8f, friction));
         SnapTo(p);
+
+        // --- duvar depenetrasyon (snap sonrası da uygula)
+        ResolveWallPenetration();
     }
 
     // ===== DUVAR BOYUNCA KAY =====
@@ -305,7 +379,12 @@ public class TacticalCover : MonoBehaviour
         inCover = false;
         velocity = Vector3.zero;
 
-        if (animator) animator.SetBool(inCoverBool, false);
+        if (animator)
+        {
+            animator.SetBool(inCoverBool, false); // InCover=false → Idle
+            if (disableRootMotionInCover)
+                animator.applyRootMotion = savedApplyRootMotion; // root motion'u eski haline getir
+        }
         if (cameraRig) cameraRig.localPosition = Vector3.Lerp(cameraRig.localPosition, cameraLocalOffsetDefault, 1f);
 
         if (debugLogs) Debug.Log("[Cover] Cover'dan çıkıldı.");
@@ -345,6 +424,63 @@ public class TacticalCover : MonoBehaviour
     {
         Vector3 p = Vector3.Lerp(tr.position, worldPos, 0.35f); // ilk girişte bile yumuşak
         if (rb) rb.MovePosition(p); else tr.position = p;
+    }
+
+    // ---- DUVAR DEPENETRASYON KORUMASI ----
+    void ResolveWallPenetration()
+    {
+        // Yalnızca collider varsa çalışır
+        if (!capCol && !cc) return;
+
+        // Kapsül geometrisini hesapla (capsulecollider varsa onunla, yoksa CC ile)
+        Vector3 center;
+        float radius;
+        float height;
+        int direction; // 0=x,1=y,2=z  (bizde genelde 1)
+
+        if (capCol)
+        {
+            center = tr.TransformPoint(capCol.center);
+            radius = Mathf.Abs(capCol.radius) * Mathf.Max(tr.lossyScale.x, tr.lossyScale.z);
+            height = Mathf.Max(capCol.height * tr.lossyScale.y, radius * 2f + 0.01f);
+            direction = capCol.direction;
+        }
+        else // CharacterController
+        {
+            center = tr.TransformPoint(cc.center);
+            radius = Mathf.Abs(cc.radius) * Mathf.Max(tr.lossyScale.x, tr.lossyScale.z);
+            height = Mathf.Max(cc.height * tr.lossyScale.y, radius * 2f + 0.01f);
+            direction = 1;
+        }
+
+        Vector3 up = (direction == 0) ? tr.right : (direction == 2) ? tr.forward : tr.up;
+        Vector3 p1 = center + up * (height * 0.5f - radius);
+        Vector3 p2 = center - up * (height * 0.5f - radius);
+
+        var hits = Physics.OverlapCapsule(p1, p2, radius, coverMask, QueryTriggerInteraction.Ignore);
+        foreach (var h in hits)
+        {
+            if (!h || h.attachedRigidbody == rb) continue;
+            if (h.transform.IsChildOf(tr)) continue;
+
+            if (Physics.ComputePenetration(
+                    capCol ? (Collider)capCol : (Collider)cc, tr.position, tr.rotation,
+                    h, h.transform.position, h.transform.rotation,
+                    out Vector3 dir, out float dist))
+            {
+                // Sadece duvardan DIŞARI bileşeni uygula
+                // (dir: bizim kollaydırımızı dışarı iten yön)
+                float push = Vector3.Dot(dir, coverNormal);
+                Vector3 correction;
+                if (push > 0f)
+                    correction = coverNormal * (dist + 0.005f);
+                else
+                    correction = dir.normalized * (dist + 0.005f); // emniyet
+
+                if (rb) rb.position += correction;
+                else tr.position += correction;
+            }
+        }
     }
 
     void OnDrawGizmosSelected()

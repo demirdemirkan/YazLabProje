@@ -29,6 +29,10 @@ public class Player : MonoBehaviour
     public bool isAiming;
     public string aimBoolParam = "Aiming";
 
+    // >>> Aiming param güvenliği için ek alanlar <<<
+    int aimBoolHash;
+    bool hasAimBool;
+
     // --- Jump (sade & sağlam) ---
     [Header("Jump")]
     public KeyCode jumpKey = KeyCode.Space;
@@ -38,15 +42,15 @@ public class Player : MonoBehaviour
     [Header("Grounding")]
     public LayerMask groundMask = ~0;      // testte Everything
     public float footProbeRadius = 0.18f;  // ayak altı küre yarıçapı
-    public float footProbeLift = 0.06f;  // küre merkezini tabandan yukarı
-    public float footProbeDepth = 0.08f;  // referans (OverlapSphere kullanıyoruz)
+    public float footProbeLift = 0.06f;    // küre merkezini tabandan yukarı
+    public float footProbeDepth = 0.08f;   // referans (OverlapSphere kullanıyoruz)
 
     [Header("Jump Tuning")]
     public float coyoteTime = 0.12f;
 
     [Header("Anti-Sink")]
     public float overlapPadding = 0.02f;   // depenetrasyon için küçük pay
-    public int maxOverlapIters = 1;      // her karede en fazla 1 düzeltme (yeterli)
+    public int maxOverlapIters = 1;        // her karede en fazla 1 düzeltme (yeterli)
     public LayerMask antiSinkMask = ~0;    // genelde groundMask ile aynı bırak
 
     bool wantToJump;
@@ -68,6 +72,22 @@ public class Player : MonoBehaviour
     const string TR_PISTOL_IDLE = "PistolIdle";
     const string TR_PISTOL_WALK = "PistolWalk";
     const string TR_PISTOL_CROUCHID = "PistolCrouchIdle";
+
+    // >>> Animator'da parametre var mı kontrolü (helper) <<<
+    static bool HasParam(Animator anim, string name, AnimatorControllerParameterType type)
+    {
+        if (!anim) return false;
+        var ps = anim.parameters;
+        for (int i = 0; i < ps.Length; i++)
+            if (ps[i].type == type && ps[i].name == name)
+                return true;
+        return false;
+    }
+
+    // >>> Trigger güvenliği (varsa set/reset) <<<
+    bool HasTrigger(string name) => animator && HasParam(animator, name, AnimatorControllerParameterType.Trigger);
+    void SafeSetTrigger(string name) { if (HasTrigger(name)) animator.SetTrigger(name); }
+    void SafeResetTrigger(string name) { if (HasTrigger(name)) animator.ResetTrigger(name); }
 
     void Awake()
     {
@@ -124,6 +144,35 @@ public class Player : MonoBehaviour
         rb.constraints = RigidbodyConstraints.FreezeRotationX
                        | RigidbodyConstraints.FreezeRotationY
                        | RigidbodyConstraints.FreezeRotationZ;
+
+        // >>> Aiming bool param kontrolü ve alternatif isimlere fallback <<<
+        if (animator)
+        {
+            hasAimBool = HasParam(animator, aimBoolParam, AnimatorControllerParameterType.Bool);
+
+            if (!hasAimBool)
+            {
+                // Animator’da farklı isim kullanılmış olabilir; yaygın alternatifleri sırayla dene
+                string[] candidates = { "Aiming", "IsAiming", "isAiming", "Aim" };
+                foreach (var c in candidates)
+                {
+                    if (HasParam(animator, c, AnimatorControllerParameterType.Bool))
+                    {
+                        aimBoolParam = c;
+                        hasAimBool = true;
+                        break;
+                    }
+                }
+
+                if (!hasAimBool)
+                {
+                    Debug.LogWarning($"[Player] Animator bool param bulunamadı: '{aimBoolParam}'. Animator'a bir Bool ekleyin (örn: 'Aiming').");
+                }
+            }
+
+            if (hasAimBool)
+                aimBoolHash = Animator.StringToHash(aimBoolParam);
+        }
     }
 
     // Child kapsülün WORLD bounds’larına göre root’a doğru kapsül kurar
@@ -178,7 +227,8 @@ public class Player : MonoBehaviour
         bool moving = inputDir.sqrMagnitude >= 0.01f;
         bool sprint = moving && Input.GetKey(KeyCode.LeftShift);
 
-        if (animator) animator.SetBool(aimBoolParam, isAiming);
+        // >>> Güvenli Aiming set (parametre varsa) <<<
+        if (animator && hasAimBool) animator.SetBool(aimBoolHash, isAiming);
 
         // Anim hedefi
         AnimState next = currentState;
@@ -231,7 +281,10 @@ public class Player : MonoBehaviour
             wantToJump = false;
             isGrounded = false;
             coyoteTimer = 0f;
-            if (animator) { animator.ResetTrigger(TR_CROUCH_IDLE); animator.SetTrigger("Jump"); }
+
+            // Güvenli trigger kullan
+            SafeResetTrigger(TR_CROUCH_IDLE);
+            SafeSetTrigger("Jump");
         }
 
         // 5) Düşüş hızlandırma
@@ -261,32 +314,34 @@ public class Player : MonoBehaviour
             }
         }
 
-        // 7) iniş tetik (opsiyonel)
-        if (!wasGrounded && isGrounded && animator)
-            animator.SetTrigger("Land");
+        // 7) iniş tetik (güvenli)
+        if (!wasGrounded && isGrounded)
+            SafeSetTrigger("Land");
     }
 
     void FireTransition(AnimState next)
     {
-        animator.ResetTrigger(TR_IDLE);
-        animator.ResetTrigger(TR_WALK);
-        animator.ResetTrigger(TR_RUN);
-        animator.ResetTrigger(TR_CROUCH_IDLE);
-        animator.ResetTrigger(TR_CROUCH_WALK);
-        animator.ResetTrigger(TR_PISTOL_IDLE);
-        animator.ResetTrigger(TR_PISTOL_WALK);
-        animator.ResetTrigger(TR_PISTOL_CROUCHID);
+        // Reset'leri güvenli yap
+        SafeResetTrigger(TR_IDLE);
+        SafeResetTrigger(TR_WALK);
+        SafeResetTrigger(TR_RUN);
+        SafeResetTrigger(TR_CROUCH_IDLE);
+        SafeResetTrigger(TR_CROUCH_WALK);
+        SafeResetTrigger(TR_PISTOL_IDLE);
+        SafeResetTrigger(TR_PISTOL_WALK);
+        SafeResetTrigger(TR_PISTOL_CROUCHID);
 
+        // Set'leri güvenli yap
         switch (next)
         {
-            case AnimState.Idle: animator.SetTrigger(TR_IDLE); break;
-            case AnimState.Walk: animator.SetTrigger(TR_WALK); break;
-            case AnimState.Run: animator.SetTrigger(TR_RUN); break;
-            case AnimState.CrouchIdle: animator.SetTrigger(TR_CROUCH_IDLE); break;
-            case AnimState.CrouchWalk: animator.SetTrigger(TR_CROUCH_WALK); break;
-            case AnimState.PistolIdle: animator.SetTrigger(TR_PISTOL_IDLE); break;
-            case AnimState.PistolWalk: animator.SetTrigger(TR_PISTOL_WALK); break;
-            case AnimState.PistolCrouchIdle: animator.SetTrigger(TR_PISTOL_CROUCHID); break;
+            case AnimState.Idle: SafeSetTrigger(TR_IDLE); break;
+            case AnimState.Walk: SafeSetTrigger(TR_WALK); break;
+            case AnimState.Run: SafeSetTrigger(TR_RUN); break;
+            case AnimState.CrouchIdle: SafeSetTrigger(TR_CROUCH_IDLE); break;
+            case AnimState.CrouchWalk: SafeSetTrigger(TR_CROUCH_WALK); break;
+            case AnimState.PistolIdle: SafeSetTrigger(TR_PISTOL_IDLE); break;
+            case AnimState.PistolWalk: SafeSetTrigger(TR_PISTOL_WALK); break;
+            case AnimState.PistolCrouchIdle: SafeSetTrigger(TR_PISTOL_CROUCHID); break;
         }
     }
 
