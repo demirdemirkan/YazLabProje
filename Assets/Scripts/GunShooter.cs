@@ -32,7 +32,7 @@ public class GunShooter : MonoBehaviour
     {
         cd -= Time.deltaTime;
 
-        if (requireAim && weaponEquip && !weaponEquip.isAiming) return;
+        if (requireAim && weaponEquip && weaponEquip.isAiming) return;
 
         bool wantFire = semiAuto ? Input.GetMouseButtonDown(0) : Input.GetMouseButton(0);
         if (!wantFire || cd > 0f) return;
