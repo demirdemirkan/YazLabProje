@@ -1,8 +1,15 @@
-﻿using UnityEngine;
+﻿using System; // <-- EKLENDI (event için)
+using UnityEngine;
 
 [DisallowMultipleComponent]
 public class WeaponEquip : MonoBehaviour
 {
+    // === EKLENDI: disariya silah degisim bildirimi ===
+    public event Action<Transform> OnWeaponChanged; // eldeki silah kökü (null = silah yok)
+    public Transform CurrentWeaponRoot =>
+        currentPistol ? currentPistol.transform :
+        (rightHandMount && rightHandMount.childCount > 0 ? rightHandMount.GetChild(rightHandMount.childCount - 1) : null);
+
     [Header("References")]
     [Tooltip("Sağ el için mount (RightHand_Mount). Boşsa Awake'te adından bulmayı dener.")]
     public Transform rightHandMount;
@@ -16,7 +23,7 @@ public class WeaponEquip : MonoBehaviour
     public bool debugLogs = true;
 
     [Header("Global Calibration Offsets (tüm silahlara eklenir)")]
-    public Vector3 positionOffset = Vector3.zero;     // mm-cm arası düzeltme
+    public Vector3 positionOffset = Vector3.zero;      // mm-cm arası düzeltme
     public Vector3 rotationOffsetEuler = Vector3.zero; // derecelerle düzeltme
 
     [Header("Rotation Lock")]
@@ -57,6 +64,15 @@ public class WeaponEquip : MonoBehaviour
             for (int i = 0; i < rightHandMount.childCount; i++)
                 rightHandMount.GetChild(i).gameObject.SetActive(false);
         }
+    }
+
+    // === EKLENDI: sahne zaten silahlı başlıyorsa ilk durumu duyur ===
+    void Start()
+    {
+        if (rightHandMount && rightHandMount.childCount > 0)
+            OnWeaponChanged?.Invoke(CurrentWeaponRoot);
+        else
+            OnWeaponChanged?.Invoke(null);
     }
 
     void Update()
@@ -137,6 +153,9 @@ public class WeaponEquip : MonoBehaviour
         AttachToMountAndCalibrate(currentPistol.transform);
         currentPistol.SetActive(true);
         isEquipped = true;
+
+        // === EKLENDI: silah takildi bilgisini yayinla ===
+        OnWeaponChanged?.Invoke(currentPistol.transform);
     }
 
     public void Unequip()
@@ -147,6 +166,9 @@ public class WeaponEquip : MonoBehaviour
 
         if (currentPistol != null) currentPistol.SetActive(false);
         isEquipped = false;
+
+        // === EKLENDI: silah yok bilgisini yayinla ===
+        OnWeaponChanged?.Invoke(null);
     }
 
     /// <summary> Dışarıdan başka bir prefab takmak için. </summary>
@@ -163,6 +185,9 @@ public class WeaponEquip : MonoBehaviour
         AttachToMountAndCalibrate(currentPistol.transform);
         currentPistol.SetActive(true);
         isEquipped = true;
+
+        // === EKLENDI: silah takildi bilgisini yayinla ===
+        OnWeaponChanged?.Invoke(currentPistol.transform);
     }
 
     // ---------- INTERNAL ----------

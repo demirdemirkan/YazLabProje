@@ -9865,7 +9865,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1235296468}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
   m_Name: 
@@ -10059,7 +10059,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1247258590}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6b288337569c33045bda301c8db09a41, type: 3}
   m_Name: 
@@ -10089,13 +10089,16 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1247258590}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 545106cdfd66eb94586d350133b3e002, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Health
   maxHealth: 100
   destroyOnDeath: 1
+  deathCleanupDelay: 3
+  animator: {fileID: 0}
+  dieTrigger: Die
 --- !u!1001 &1251937482
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -16105,7 +16108,11 @@ MonoBehaviour:
     m_Bits: 8
   muzzleFlash: {fileID: 0}
   impactVfxPrefab: {fileID: 0}
-  shotAudio: {fileID: 0}
+  shotAudio: {fileID: 3775414057259983470, guid: b53dbde727bfa9a4eb95a4028b0f5737, type: 3}
+  shotClip: {fileID: 0}
+  pitchRandom: {x: 0.95, y: 1.05}
+  autoBindFromWeaponEquip: 1
+  muzzleName: Muzzle
 --- !u!114 &1991641320
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16120,6 +16127,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Health
   maxHealth: 100
   destroyOnDeath: 1
+  deathCleanupDelay: 3
+  animator: {fileID: 0}
+  dieTrigger: Die
 --- !u!114 &1991641321
 MonoBehaviour:
   m_ObjectHideFlags: 0
