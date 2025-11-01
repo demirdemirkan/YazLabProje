@@ -1,19 +1,24 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
+using System;
 
 public class Health : MonoBehaviour
 {
     [Header("Health")]
     public float maxHealth = 100f;
     public bool destroyOnDeath = true;
-    public float deathCleanupDelay = 3f;  // event koymazsan yedek süre
+    public float deathCleanupDelay = 3f;
 
     [Header("Animation")]
-    public Animator animator;             // boþsa otomatik bulunur
-    public string dieTrigger = "Die";     // Animator Trigger adý
+    public Animator animator;
+    public string dieTrigger = "Die";
 
     public bool IsDead { get; private set; }
+    public float Current => hp;          // UI için
+    public float Max => maxHealth;       // UI için
+    public event Action<float, float> OnHealthChanged; // (current, max)
+
     float hp;
 
     EnemyAI ai;
@@ -25,13 +30,24 @@ public class Health : MonoBehaviour
         if (!animator) animator = GetComponentInChildren<Animator>();
         ai = GetComponent<EnemyAI>();
         agent = GetComponent<NavMeshAgent>();
+
+        // ilk yayýn
+        OnHealthChanged?.Invoke(hp, maxHealth);
     }
 
     public void TakeDamage(float amount)
     {
         if (IsDead) return;
-        hp -= amount;
+        hp = Mathf.Max(0f, hp - amount);
+        OnHealthChanged?.Invoke(hp, maxHealth);
         if (hp <= 0f) Die();
+    }
+
+    public void Heal(float amount)
+    {
+        if (IsDead) return;
+        hp = Mathf.Min(maxHealth, hp + amount);
+        OnHealthChanged?.Invoke(hp, maxHealth);
     }
 
     public void Die()
@@ -39,47 +55,29 @@ public class Health : MonoBehaviour
         if (IsDead) return;
         IsDead = true;
 
-        // AI ve hareketi durdur
         if (ai) ai.enabled = false;
         if (agent)
         {
             agent.isStopped = true;
             agent.updatePosition = false;
             agent.updateRotation = false;
-            agent.enabled = false; // zemine yapýþýk kalsýn
+            agent.enabled = false;
         }
 
-        // Ölüm animasyonu tetikle
-        if (animator)
-        {
-            // güvenlik: saldýrý/koþu paramlarýný sýfýrla
-            if (animator.HasParameterOfType("Attack", AnimatorControllerParameterType.Trigger))
-                animator.ResetTrigger("Attack");
-            if (animator.HasParameterOfType("Speed", AnimatorControllerParameterType.Float))
-                animator.SetFloat("Speed", 0f);
+        if (animator && !string.IsNullOrEmpty(dieTrigger))
+            animator.SetTrigger(dieTrigger);
 
-            if (!string.IsNullOrEmpty(dieTrigger))
-                animator.SetTrigger(dieTrigger);
-        }
-
-        // Çarpýþmayý yumuþat (bir sonraki frame'de)
         StartCoroutine(DisableHitboxesNextFrame());
 
         if (destroyOnDeath)
-        {
-            // Anim Event gelmezse emniyet olarak gecikme ile sil
             StartCoroutine(FallbackCleanup());
-        }
     }
 
     IEnumerator DisableHitboxesNextFrame()
     {
-        yield return null; // bir frame bekle (anim pozisyonu otursun)
-        // Ýstersen sadece "Hitbox" layer’lý collider’larý kapatabilirsin
-        foreach (var col in GetComponentsInChildren<Collider>())
-            col.enabled = false;
-        foreach (var rb in GetComponentsInChildren<Rigidbody>())
-            rb.isKinematic = true;
+        yield return null;
+        foreach (var col in GetComponentsInChildren<Collider>()) col.enabled = false;
+        foreach (var rb in GetComponentsInChildren<Rigidbody>()) rb.isKinematic = true;
     }
 
     IEnumerator FallbackCleanup()
@@ -88,20 +86,9 @@ public class Health : MonoBehaviour
         if (this) Destroy(gameObject);
     }
 
-    // ANIMATION EVENT: Ölüm klibinin son frame’ine bu ismi ver
+    // ANIMATION EVENT ile çaðýrýlabilir
     public void OnDeathAnimationComplete()
     {
         if (destroyOnDeath) Destroy(gameObject);
-    }
-}
-
-// Küçük yardýmcý: Parametre var mý kontrolü
-public static class AnimatorExt
-{
-    public static bool HasParameterOfType(this Animator self, string name, AnimatorControllerParameterType type)
-    {
-        foreach (var p in self.parameters)
-            if (p.type == type && p.name == name) return true;
-        return false;
     }
 }
