@@ -1,24 +1,16 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 public class DieParamToGameOver : MonoBehaviour
 {
     [Header("Refs")]
     [SerializeField] Animator animator;           // Player Animator
-    [SerializeField] GameOverUI gameOverUI;       // Canvas üzerindeki GameOverUI
+    [SerializeField] GameOverUI gameOverUI;       // Canvas Ã¼zerindeki GameOverUI
 
-    [Header("Animator Param")]
-    [SerializeField] string dieParam = "die";     // senin param adýn
-    [SerializeField] bool dieIsBool = true;     // bool ise TRUE, trigger ise FALSE
-
-    [Header("Death State")]
-    [SerializeField] string deathStateName = "Death"; // Animator’daki ölüm state adý
+    [Header("Animator")]
+    [SerializeField] string dieParam = "Die";     // TRIGGER adÄ± (bool deÄŸil!)
+    [SerializeField] string deathStateName = "Die"; // Animator'daki Ã¶lÃ¼m state adÄ±
     [Range(0f, 1.2f)] public float showAtNormalizedTime = 0.99f;
 
-    [Header("Hýzlý Açýlýþ (bool ise)")]
-    public bool openImmediatelyOnBoolTrue = true; // bool true olur olmaz aç
-
-    int dieHash;
-    bool prevBool;
     bool fired;
     int lastStateHash;
 
@@ -26,64 +18,47 @@ public class DieParamToGameOver : MonoBehaviour
     {
         if (!animator) animator = GetComponentInChildren<Animator>();
         if (!gameOverUI) gameOverUI = FindObjectOfType<GameOverUI>(true);
-        dieHash = Animator.StringToHash(dieParam);
-
-        if (animator)
-            lastStateHash = animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
-
-        Debug.Log($"[DieParam] Init | animator={(animator ? animator.name : "NULL")} | gameOverUI={(gameOverUI ? "OK" : "NULL")} | die={dieParam} (bool={dieIsBool}) | state={deathStateName}");
+        if (animator) lastStateHash = animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
+        Debug.Log($"[DieParamâ†’GO] init | anim={(animator ? animator.name : "NULL")} | ui={(gameOverUI ? "OK" : "NULL")} | trigger={dieParam} | state={deathStateName}");
     }
 
     void Update()
     {
         if (!animator || !gameOverUI || fired) return;
 
-        // 1) Bool ise: false->true’yu yakala ve istersen anýnda aç
-        if (dieIsBool)
-        {
-            bool now = false;
-            try { now = animator.GetBool(dieHash); } catch { /* param bool deðilse */ }
-
-            if (!prevBool && now)
-            {
-                Debug.Log("[DieParam] die bool TRUE oldu");
-                if (openImmediatelyOnBoolTrue)
-                    OpenNow("bool TRUE (immediate)");
-                else
-                    StartCoroutine(WaitDeathAndTimeThenOpen());
-            }
-            prevBool = now;
-        }
-
-        // 2) Trigger veya genel: Death state’e geçiþ ve %99 eþiðini bekle
+        // Sadece state geÃ§iÅŸini izliyoruz (trigger okunamaz)
         var info = animator.GetCurrentAnimatorStateInfo(0);
         int curHash = info.shortNameHash;
+
+        // Yeni state Death ise, bitime kadar bekle
         if (curHash != lastStateHash && info.IsName(deathStateName))
         {
-            Debug.Log("[DieParam] Death state'e girildi");
-            StartCoroutine(WaitDeathAndTimeThenOpen());
+            Debug.Log("[DieParamâ†’GO] Death state'e girildi, zaman eÅŸiÄŸi bekleniyorâ€¦");
+            StartCoroutine(WaitNormTimeThenOpen());
         }
         lastStateHash = curHash;
     }
 
-    System.Collections.IEnumerator WaitDeathAndTimeThenOpen()
+    System.Collections.IEnumerator WaitNormTimeThenOpen()
     {
-        // Death state’e girene dek bekle
+        // Death state'te kal, normalizedTime eÅŸiÄŸine kadar bekle
         while (!animator.GetCurrentAnimatorStateInfo(0).IsName(deathStateName))
             yield return null;
 
-        // Animasyon sonuna yakýn bekle
         while (animator.GetCurrentAnimatorStateInfo(0).normalizedTime < showAtNormalizedTime)
             yield return null;
 
-        OpenNow("Death state normalizedTime threshold");
+        OpenNow("Death state threshold");
     }
 
     void OpenNow(string reason)
     {
         if (fired) return;
         fired = true;
-        Debug.Log("[DieParam] GameOverUI.Show() -> " + reason);
+        Debug.Log("[DieParamâ†’GO] GameOverUI.Show() -> " + reason);
         gameOverUI.Show();
     }
+
+    // Ä°steÄŸe baÄŸlÄ±: DÄ±ÅŸarÄ±dan tetiklemek iÃ§in yardÄ±mcÄ±
+    public void FireDieTrigger() => animator?.SetTrigger(dieParam);
 }

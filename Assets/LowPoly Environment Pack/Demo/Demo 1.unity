@@ -2061,7 +2061,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: d26bbc82fa1f7574a9b4b387c9a5d3b7, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2.14
+      value: 1.9948624
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: d26bbc82fa1f7574a9b4b387c9a5d3b7, type: 3}
       propertyPath: m_LocalPosition.z
@@ -4001,7 +4001,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: -40}
   m_SizeDelta: {x: 160, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &372809365
@@ -5236,6 +5236,23 @@ CapsuleCollider:
   m_Height: 1.95
   m_Direction: 1
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &470464690
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 470464686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9612515b80cce24380873f77edf9887, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DieParamToGameOver
+  animator: {fileID: 470464687}
+  gameOverUI: {fileID: 1437945344}
+  dieParam: Die
+  deathStateName: Die
+  showAtNormalizedTime: 0.99
 --- !u!1 &475956467 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1337108901918474, guid: da41fd2967a439d409358c2214a5409e, type: 3}
@@ -5980,15 +5997,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 413848, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 2.939
+      value: 3.7255437
       objectReference: {fileID: 0}
     - target: {fileID: 413848, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.113
+      value: -0.34002692
       objectReference: {fileID: 0}
     - target: {fileID: 413848, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.301
+      value: -1.6885701
       objectReference: {fileID: 0}
     - target: {fileID: 413848, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       propertyPath: m_LocalRotation.w
@@ -6043,6 +6060,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 112068, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 470464689}
+    - targetCorrespondingSourceObject: {fileID: 112068, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 470464690}
   m_SourcePrefab: {fileID: 100100000, guid: 93f8a13fb89985e4f8d0d8ecff94969a, type: 3}
 --- !u!4 &555616580 stripped
 Transform:
@@ -13368,16 +13388,17 @@ MonoBehaviour:
   hitForce: 6
   loseSightAfter: 1.5
   shotAudio: {fileID: 6511607989982593259, guid: daf94035dfd83c74d8890bbbf960c958, type: 3}
+  shotClip: {fileID: 8300000, guid: d7b8976b40d9ee74298e8756dbab539b, type: 3}
   muzzleFlash: {fileID: 0}
   impactVfxPrefab: {fileID: 0}
   losMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 246
   hitMask:
     serializedVersion: 2
-    m_Bits: 4294967295
-  aimBool: Aiming
-  fireTrig: Fire
+    m_Bits: 246
+  aimBool: 
+  fireTrig: 
 --- !u!95 &1298738144 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 0043c2f58d23b044b9a27bdc9ace4cce, type: 3}
@@ -14703,8 +14724,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GuardAimer
   player: {fileID: 470464688}
   animator: {fileID: 1496405064}
-  engageDistance: 25
-  loseDistance: 30
+  engageDistance: 30
+  loseDistance: 35
   losMask:
     serializedVersion: 2
     m_Bits: 118
@@ -14743,16 +14764,17 @@ MonoBehaviour:
   hitForce: 6
   loseSightAfter: 1.5
   shotAudio: {fileID: 6511607989982593259, guid: daf94035dfd83c74d8890bbbf960c958, type: 3}
+  shotClip: {fileID: 8300000, guid: d7b8976b40d9ee74298e8756dbab539b, type: 3}
   muzzleFlash: {fileID: 0}
   impactVfxPrefab: {fileID: 0}
   losMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 246
   hitMask:
     serializedVersion: 2
-    m_Bits: 4294967295
-  aimBool: Aiming
-  fireTrig: Fire
+    m_Bits: 246
+  aimBool: 
+  fireTrig: 
 --- !u!95 &1496405064 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 0043c2f58d23b044b9a27bdc9ace4cce, type: 3}
@@ -21104,7 +21126,6 @@ GameObject:
   - component: {fileID: 1991641321}
   - component: {fileID: 1991641322}
   - component: {fileID: 1991641323}
-  - component: {fileID: 1991641324}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -21344,10 +21365,8 @@ MonoBehaviour:
   health: {fileID: 1991641320}
   animator: {fileID: 470464687}
   dieTrigger: Die
-  gameOverUI: {fileID: 0}
-  disableOnDeath:
-  - {fileID: 1991641313}
-  - {fileID: 2018271276}
+  gameOverUI: {fileID: 1437945344}
+  disableOnDeath: []
 --- !u!95 &1991641323
 Animator:
   serializedVersion: 7
@@ -21370,25 +21389,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &1991641324
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1991641312}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a9612515b80cce24380873f77edf9887, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DieParamToGameOver
-  animator: {fileID: 470464687}
-  gameOverUI: {fileID: 1437945344}
-  dieParam: die
-  dieIsBool: 1
-  deathStateName: Death
-  showAtNormalizedTime: 0.99
-  openImmediatelyOnBoolTrue: 1
 --- !u!1001 &1994525081
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -21749,8 +21749,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2018271272}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.20070127, y: -0.36053106, z: 0.08009235, w: -0.9073707}
-  m_LocalPosition: {x: 16.35628, y: 3.6925821, z: 85.324005}
+  m_LocalRotation: {x: -0.104073025, y: -0.3660939, z: 0.041319236, w: -0.92381644}
+  m_LocalPosition: {x: 15.0583725, y: 3.0807042, z: 83.97327}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -22925,7 +22925,7 @@ Transform:
   m_GameObject: {fileID: 2051135975}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.4999996, z: -0, w: 0.8660257}
-  m_LocalPosition: {x: -780.701, y: -550.21857, z: 168.79604}
+  m_LocalPosition: {x: -832.60144, y: -547.53204, z: 120.29972}
   m_LocalScale: {x: 9.698507, y: 0, z: 10.59632}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -22974,16 +22974,17 @@ MonoBehaviour:
   hitForce: 6
   loseSightAfter: 1.5
   shotAudio: {fileID: 6511607989982593259, guid: daf94035dfd83c74d8890bbbf960c958, type: 3}
+  shotClip: {fileID: 8300000, guid: d7b8976b40d9ee74298e8756dbab539b, type: 3}
   muzzleFlash: {fileID: 0}
   impactVfxPrefab: {fileID: 0}
   losMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 246
   hitMask:
     serializedVersion: 2
-    m_Bits: 4294967295
-  aimBool: Aiming
-  fireTrig: Fire
+    m_Bits: 246
+  aimBool: 
+  fireTrig: 
 --- !u!95 &2059886655 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 0043c2f58d23b044b9a27bdc9ace4cce, type: 3}
@@ -23003,8 +23004,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GuardAimer
   player: {fileID: 470464688}
   animator: {fileID: 2059886655}
-  engageDistance: 20
-  loseDistance: 25
+  engageDistance: 25
+  loseDistance: 30
   losMask:
     serializedVersion: 2
     m_Bits: 118
@@ -23974,16 +23975,17 @@ MonoBehaviour:
   hitForce: 6
   loseSightAfter: 1.5
   shotAudio: {fileID: 6511607989982593259, guid: daf94035dfd83c74d8890bbbf960c958, type: 3}
+  shotClip: {fileID: 8300000, guid: d7b8976b40d9ee74298e8756dbab539b, type: 3}
   muzzleFlash: {fileID: 0}
   impactVfxPrefab: {fileID: 0}
   losMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 246
   hitMask:
     serializedVersion: 2
-    m_Bits: 4294967295
-  aimBool: Aiming
-  fireTrig: Fire
+    m_Bits: 246
+  aimBool: 
+  fireTrig: 
 --- !u!95 &2121426517 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 0043c2f58d23b044b9a27bdc9ace4cce, type: 3}
