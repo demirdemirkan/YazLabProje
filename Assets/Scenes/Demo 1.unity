@@ -24065,7 +24065,6 @@ GameObject:
   - component: {fileID: 1991641318}
   - component: {fileID: 1991641320}
   - component: {fileID: 1991641319}
-  - component: {fileID: 1991641321}
   - component: {fileID: 1991641322}
   - component: {fileID: 1991641323}
   m_Layer: 7
@@ -24248,50 +24247,6 @@ MonoBehaviour:
   deathCleanupDelay: 999
   animator: {fileID: 470464687}
   dieTrigger: Die
---- !u!114 &1991641321
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1991641312}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b7cfc37e749210640affd84380669bd6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TacticalCover
-  toggleCoverKey: 118
-  leanLeftKey: 113
-  leanRightKey: 101
-  aimKey: 324
-  coverMask:
-    serializedVersion: 2
-    m_Bits: 64
-  findCoverDistance: 3
-  findCoverRadius: 0.65
-  snapDepth: 0.35
-  maxEnterAngle: 90
-  maxSurfaceSlopeY: 0.9
-  slideSpeed: 2
-  friction: 12
-  leanAmount: 0.25
-  leanHeadUp: 0.08
-  leanRotDeg: 10
-  leanLerp: 10
-  animator: {fileID: 470464687}
-  inCoverBool: InCover
-  leanFloat: Lean
-  movingFloat: CoverSpeed
-  coverDirFloat: CoverDir
-  cameraRig: {fileID: 2018271277}
-  cameraLocalOffsetCover: {x: 0.15, y: 0.05, z: 0}
-  cameraLocalOffsetDefault: {x: 0, y: 0, z: 0}
-  childCapsule: {fileID: 470464689}
-  lockYInCover: 1
-  horizontalPushOnly: 1
-  enterGrace: 0.25
-  disableRootMotionInCover: 1
-  debugLogs: 1
 --- !u!114 &1991641322
 MonoBehaviour:
   m_ObjectHideFlags: 0
