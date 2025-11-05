@@ -12,10 +12,10 @@ public class GameOverUI : MonoBehaviour
     [Tooltip("Panel üzerindeki CanvasGroup (fade için). Atamazsan otomatik bulunur/eklenir.")]
     public CanvasGroup canvasGroup;
 
-    [Tooltip("Baþlýk (ÖLDÜNÜZ) - opsiyonel.")]
+    [Tooltip("Baþlýk (ÖLDÜN!) - opsiyonel.")]
     public TextMeshProUGUI title;
 
-    [Tooltip("Alt baþlýk (Tekrar denemek ister misin?) - opsiyonel.")]
+    [Tooltip("Alt baþlýk (Aslýnda her þey bir tuzakmýþ. Her þeyi seni öldürmek için kral planlamýþ. Halk tarafýndan çok sevildiðin için bir gün onun yerine geçebileceðini düþünmüþ. Prensesi kurtarmak ve bu sefer o krala haddini bildirmek için hazýr mýsýn?) - opsiyonel.")]
     public TextMeshProUGUI subtitle;
 
     [Tooltip("Vardýrsa hedefçik/crosshair - opsiyonel.")]
@@ -29,8 +29,8 @@ public class GameOverUI : MonoBehaviour
     [Range(0.05f, 2f)] public float fadeDuration = 0.2f;
 
     [Header("Metinler (boþsa mevcut metne dokunulmaz)")]
-    public string titleTextOnShow = "ÖLDÜNÜZ";
-    public string subtitleTextOnShow = "Tekrar denemek ister misin?";
+    public string titleTextOnShow = "ÖLDÜN!";
+    public string subtitleTextOnShow = "Aslýnda her þey bir tuzakmýþ. Her þeyi seni öldürmek için kral planlamýþ. Halk tarafýndan çok sevildiðin için bir gün onun yerine geçebileceðini düþünmüþ. Prensesi kurtarmak ve bu sefer o krala haddini bildirmek için hazýr mýsýn?";
 
     // Dahili
     bool _visible;
