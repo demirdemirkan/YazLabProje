@@ -44,6 +44,77 @@ YazLabProje/Assets/Scripts/Panels
 -Winzone.cs:Oyun kazanılınca Winzone panelini açar.
 
 Oyun Mekanikleri Blok Diyagramı:
+┌───────────────────────┐         ┌─────────────────────────────┐          ┌──────────────────────────┐
+│     INPUT SYSTEM      │ WASD    │    PLAYER CONTROLLER        │ Animator │  ANIMATION STATE MACHINE │
+│ (Klavye + Fare)       │ LShift  │  (Rigidbody tabanlı)        ├─────────►│  Idle/Walk/Run           │
+│ - WASD hareket        │ RMB     │  - Yatay hareket (XZ)       │          │  Crouch Idle/Walk        │
+│ - LShift koş          │ LMB     │  - Zıplama (Space)          │          │  Pistol Idle/Walk (Aim)  │
+│ - C eğil toggle       │ Space   │  - Yer kontrolü (GroundChk) │          │  Jump (inişle çıkış)     │
+└──────────┬────────────┘         └──────────────┬──────────────┘          └───────────┬──────────────┘
+           │                                      │                                    │
+           │ Aim yönü / hareket vektörü           │                                    │
+           │                                      │                                    │
+           │                                      ▼                                    │
+           │                         ┌────────────┴────────────┐                       │
+           │                         │   CAMERA FOLLOW / TPS   │                       │
+           │                         │  (arkadan takip, offset)│                       │
+           │                         └────────────┬────────────┘                       │
+           │                                      │                                    │
+           │                                      ▼                                    │
+           │                         ┌────────────┴────────────┐                       │
+           │                         │      WEAPON EQUIP       │                       │
+           │                         │  - Grip hizalama        │                       │
+           │                         │  - Aim offset           │                       │
+           │                         └────────────┬────────────┘                       │
+           │                                      │                                    │
+           │                                      ▼                                    │
+           │                         ┌────────────┴────────────┐   Raycast (hitMask)   │
+           └────────────────────────►│       GUN SHOOTER       ├───────────────────────┘
+                                     │  - Aim gerekiyorsa ateş │
+                                     │  - Muzzle flash / ses   │
+                                     └────────────┬────────────┘
+                                                  │  Hit
+                                                  ▼
+                                     ┌────────────┴────────────┐
+                                     │  ENEMY HEALTH / RAGDOLL │
+                                     │  - Hasar/Ölüm           │
+                                     └────────────┬────────────┘
+                                                  │ UI güncelle
+                                                  ▼
+                                     ┌────────────┴────────────┐
+                                     │ WORLD-SPACE HEALTH BAR  │
+                                     │ (kafanın üstünde)       │
+                                     └─────────────────────────┘
+
+
+            LOS (losMask: Player+Cover+Env)                 Kovalamaca / Ateş
+┌───────────────────────────┐     Görüş hattı     ┌───────────────────────────┐
+│     ENEMY WEAPON ATTACK   │◄────────────────────│       ENEMY AI (SWAT)     │
+│  - DetectRange / FireRate │                     │  - NavMeshAgent Patrol    │
+│  - FireOnce (Ray)         │────────────────────►│  - Chase / Stop & Aim     │
+│  - Audio / Impact VFX     │   Player’a hasar    │  - Fire (FireRange)       │
+└───────────────┬───────────┘                     └───────────────┬───────────┘
+                │                                              Death/Disable
+                │                                                   │
+                ▼                                                   ▼
+       ┌────────┴────────┐                                   ┌──────┴─────────┐
+       │ PLAYER HEALTH   │ 0 olursa                          │ GAME OVER UI   │
+       │ (bar:kafa üstü) ├──────────────────────────────────►│ (Retry / Exit) │
+       └────────┬────────┘                                   └────────────────┘
+                │ WinZone tetiklenirse
+                ▼
+       ┌────────┴────────┐
+       │   WIN PANEL     │
+       │ (Görev yazısı   │
+       │  gizlenir)      │
+       └─────────────────┘
+
+
+Ek Bileşenler:
+- Physics: Rigidbody hareket, yer kontrolü (ground check), zıplama (Space → rb.AddForce / velocity.y).
+- Layers: hitMask (Player/Enemy/Env), losMask (Player+Cover+Env) → Cover hem LOS’u hem mermiyi keser.
+- Müzik: MainMenu ve Demo1 sahnesinde sahneye özel AudioSource veya kalıcı MusicManager (cross-fade).
+
 
 Oyun Sahnesi ve Tasarımı: 1.Main Menu Sahnesi: Oyunun nasıl oynanabileceğinin, oyunun hikayesinin ve tuş kontrollerinin anlatıldığı ana menüdür. Oyuna başlayabilirsiniz veya nasıl oynanacağını öğrenebilirsiniz.
                           2. Demo 1 Sahnesi: Asıl oyun alanı. Çevre, düşmanlar, görev alanları, kazanma ve kaybetme koşulları burada bulunur.
