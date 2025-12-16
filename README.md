@@ -153,6 +153,6 @@ Gelişimler ve Kazanımlar: Unity’de tam fonksiyonel bir oyun döngüsü oluş
                           
 
 Ekip Üyeleri: Demir Demirkan
-              Efe Yılmaz 
+              Efe Yılmaz. 
               Yusuf Çelebi
                                     
